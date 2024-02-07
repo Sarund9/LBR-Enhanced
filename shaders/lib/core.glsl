@@ -38,13 +38,34 @@ void debughdr(float value) {
         value * float(value < 2) * float(value > 1),
         value * float(value < 3) * float(value > 2),
     1);
-    /*composite.fsh: composite.fsh: 0(34) : error C7011: implicit cast from "bool" to "int"
-0(34) : error C7011: implicit cast from "bool" to "float"
-composite.fsh: composite.fsh: 0(34) : error C7011: implicit cast from "bool" to "int"
-
-*/
 }
 
+void debugp(float value, float start, float end) {
+    const vec3 StartColor = vec3(0);
+    const vec3 EndColor = vec3(1);
+
+    float T = (value - start) / (end - start);
+
+    _debug_value = vec4(
+        mix(StartColor, EndColor, T),
+    1);
+}
+
+void debugldr(float value) {
+    float T = clamp(value, 0, 1);
+    _debug_value = vec4(T, T, T, 1);
+    float under = max(- value, 0); // TODO: This des not work
+    float over = max(value - 1, 0);
+    _debug_value.rgb *= vec3(
+        1 + over - under,
+        1 - max(over, under),
+        1 + under - over
+    );
+}
+
+// vec3 pow3() {
+
+// }
 
 #include "option.glsl"
 
@@ -75,6 +96,84 @@ float mixstep(float value, float xMin, float xMax, float yMin, float yMax) {
 
 float avg(vec3 vec) {
     return (vec.x + vec.y + vec.z) / 3;
+}
+
+// Polynomial smooth min
+float smin(float a, float b, float k) {
+    float h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
+    return mix(a, b, h) - k*h*(1.0-h);
+}
+
+// Applies stylized shading to a color
+vec3 shade(vec3 color) {
+    vec3 res = color;
+    float grayscale = dot(res, vec3(0.299, 0.587, 0.114));
+    res = mix(res, vec3(grayscale), vec3(0.3)); // move 30% towards grayscale
+
+    // Make it darker and more blue
+    res *= vec3(0.95, 0.91, 1.14); // 5 + 9 == 14
+    res *= 0.1;
+
+    return res;
+}
+
+vec3 resaturate(vec3 rgb, float adjustment) {
+    // Algorithm from Chapter 16 of OpenGL Shading Language
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    vec3 intensity = vec3(dot(rgb, W));
+    return mix(intensity, rgb, adjustment);
+}
+
+float saturation(vec3 color) {
+    // TODO: 
+    float a = avg(color);
+    vec3 dist = abs(color - vec3(a));
+    return avg(dist);
+}
+
+vec3 normalizeColor(vec3 rgb) {
+    return rgb / avg(rgb);
+}
+
+float packNormal(float value, float mult) {
+    return value * mult - mult * .5 + .5;
+}
+
+vec3 oklab_mix( vec3 colA, vec3 colB, float h )
+{
+    // https://bottosson.github.io/posts/oklab
+    const mat3 kCONEtoLMS = mat3(                
+         0.4121656120,  0.2118591070,  0.0883097947,
+         0.5362752080,  0.6807189584,  0.2818474174,
+         0.0514575653,  0.1074065790,  0.6302613616);
+    const mat3 kLMStoCONE = mat3(
+         4.0767245293, -1.2681437731, -0.0041119885,
+        -3.3072168827,  2.6093323231, -0.7034763098,
+         0.2307590544, -0.3411344290,  1.7068625689);
+                    
+    // rgb to cone (arg of pow can't be negative)
+    vec3 lmsA = pow( kCONEtoLMS*colA, vec3(1.0/3.0) );
+    vec3 lmsB = pow( kCONEtoLMS*colB, vec3(1.0/3.0) );
+    // lerp
+    vec3 lms = mix( lmsA, lmsB, h );
+    // gain in the middle (no oaklab anymore, but looks better?)
+    // lms *= 1.0+0.2*h*(1.0-h);
+    // cone to rgb
+    return kLMStoCONE*(lms*lms*lms);
+}
+
+/*
+Dampened Add
+A, B: add
+E: dampener power (should be (0-1))
+T: threshold 
+K: smoothing
+*/
+float dampadd(float a, float b, float e, float t, float k) {
+    float add = a + b;
+    float damp = pow(add, e) + t;
+
+    return smin(add, damp, k);
 }
 
 #endif

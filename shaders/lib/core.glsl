@@ -104,6 +104,12 @@ float smin(float a, float b, float k) {
     return mix(a, b, h) - k*h*(1.0-h);
 }
 
+// Polynomial smooth min
+vec3 smin(vec3 a, vec3 b, float k) {
+    vec3 h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
+    return mix(a, b, h) - k*h*(1.0-h);
+}
+
 // Applies stylized shading to a color
 vec3 shade(vec3 color) {
     vec3 res = color;
@@ -137,6 +143,10 @@ vec3 normalizeColor(vec3 rgb) {
 
 float packNormal(float value, float mult) {
     return value * mult - mult * .5 + .5;
+}
+
+float n_raiseStart(float value, float T) {
+    return (1 - T) * value + T;
 }
 
 vec3 oklab_mix( vec3 colA, vec3 colB, float h )
@@ -174,6 +184,20 @@ float dampadd(float a, float b, float e, float t, float k) {
     float damp = pow(add, e) + t;
 
     return smin(add, damp, k);
+}
+
+vec3 getGradient(vec4 c1, vec4 c2, vec4 c3, vec4 c4, float value_) {
+	
+	float blend1 = smoothstep(c1.w, c2.w, value_);
+	float blend2 = smoothstep(c2.w, c3.w, value_);
+	float blend3 = smoothstep(c3.w, c4.w, value_);
+	
+	vec3 
+	col = oklab_mix(c1.rgb, c2.rgb, blend1);
+	col = oklab_mix(col, c3.rgb, blend2);
+	col = oklab_mix(col, c4.rgb, blend3);
+	
+	return col;
 }
 
 #endif

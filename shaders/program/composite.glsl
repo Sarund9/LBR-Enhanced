@@ -126,6 +126,7 @@ struct Surface {
 const float LightK = 3;
 const vec3 AmbientLight = vec3(.001);
 const vec3 SkyColor = vec3(0.8902, 1.0, 0.9843);
+const vec3 SunColor = vec3(1.0, 0.9922, 0.9216);
 const vec3 BaseBlocklightColor = vec3(1.0, 0.9098, 0.7373);
 
 struct Light {
@@ -133,30 +134,55 @@ struct Light {
     vec3 direction;
 };
 
+vec3 blocklightColor(float T) {
+    const vec3 Warm = vec3(1.0, 0.5843, 0.2863);
+    const vec3 White = vec3(1.0, 1.0, 1.0);
+    const vec3 Cold = vec3(0.749, 0.9647, 1.0);
+
+    // float warm = T * 5;
+    // float cold = T * -5 + 5;
+
+    // vec3 warmclr = oklab_mix(Warm, White, smin(warm, 1, 1));
+    // vec3 coldclr = oklab_mix(Cold, White, smin(cold, 1, 1));
+
+    // vec4 col = mix(mix(firstColor, middleColor, xy.x/h), mix(middleColor, endColor, (xy.x - h)/(1.0 - h)), step(h, xy.x));
+
+    return getGradient(vec4(Warm, 0), vec4(White, .3), vec4(White, .9), vec4(Cold, 1), T);
+}
+
 vec3 incomingLight(Surface surface, float blocklight, float skylight, Shadow shadow)
 {
-    const float K = LightK;
-    // 1
+    const vec3 Warm = vec3(1.0, 0.6941, 0.2902);
 
-    float block = K * pow(blocklight, 3.2);   // (.1, 3)
-    float sky = K * pow(skylight, 2.5);     // (.1, 3)
+    float block     = pow(blocklight, 3.2);   // (.1, 3)
+    vec3  blockclr  = blocklightColor(.08) * block * 1.1;
+    float sky       = pow(skylight, 2.5);     // (.1, 3)
+    vec3  skyclr    = SkyColor * sky;
 
     float dotl = dot(surface.normal, normalize(sunPosition));
-    float inl  = max(dotl, 0);
-    // float smask = shadowMask(shadow);
+    float smask = (shadow.clipAttenuation - shadow.solidAttenuation); // TODO: <- this may have bugs
+    float inl  = max(dotl, smask * .9);
     float trueshadow = mix(shadow.clipAttenuation * shadow.brightness, 1, shadow.solidAttenuation);
     trueshadow = clamp(trueshadow, 0, 1);
     
-    float sunlight = K * trueshadow * inl;
-    
-    float envmask = min(1 - (sunlight / K), sky / K);
-    envmask = packNormal(envmask, .55);
-    float env = mix(sky, sunlight, envmask);
+    float sunlight = n_raiseStart(trueshadow, 0) * inl;
 
-    float blendmask = sky / K;
-    float blockblend = mix(
-        block,
-        smin(block, block * .5 + .75, .5),
+    // TODO: Make shadow color resaturate better during dawn/dusk
+    vec3 sunlight_clr = mix(SunColor, resaturate(shadow.color, 1.5), smask);
+
+    // TODO: Vary sun color based on time of day
+    
+    float envmask = skylight * skylight * .7;
+    envmask = clamp(envmask, 0, 1);
+
+    // vec3 env = min(sky * SkyColor, sunlight * sunlight_clr);
+    vec3 env = mix(sky * SkyColor, sunlight * sunlight_clr, envmask);
+    
+    float blendmask = sky;
+
+    vec3 blockblend = mix(
+        blockclr * 1.6,
+        smin(blockclr, blockclr * .5 + .75, .5),
     blendmask);
 
     // TODO: Light Colors, Color Space
@@ -164,10 +190,9 @@ vec3 incomingLight(Surface surface, float blocklight, float skylight, Shadow sha
 
     // Mask out shadows in blocklight
     vec3 lightValue = AmbientLight;
-    lightValue += (env + blockblend) * .5;
+    lightValue += (env + blockblend) * 1.5;
     // TODO: Tonemapping outside this function
-    //  
-
+    
     /*
     OUTSIDE: (skylight is low)
     - Blocklights do not affect shadows that much
@@ -212,8 +237,10 @@ void main() {
     
     Shadow shadow = incomingShadow(depth);
     
+    vec3 mainLight = incomingLight(surface, blocklight, skylight, shadow);
+    // debug(mainLight);
     // getLighting
-    diffuse = surface.albedo * incomingLight(surface, blocklight, skylight, shadow);
+    diffuse = surface.albedo * mainLight;
 
     diffuse = togamma(diffuse); // convert to gamma space
     diffuse = mix(diffuse, _debug_value.rgb, _debug_value.a);

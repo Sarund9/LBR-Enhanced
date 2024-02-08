@@ -2,4 +2,4 @@
 
 #define __VERTEX__
 
-#include "/program/terrain.glsl"
+#include "/gbuffer/terrain.glsl"

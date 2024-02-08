@@ -2,4 +2,4 @@
 
 #define __VERTEX__
 
-#include "/gbuffer/entity.glsl"
+#include "/gbuffer/skybox.glsl"

@@ -2,4 +2,4 @@
 
 #define __PIXEL__
 
-#include "/program/terrain.glsl"
+#include "/gbuffer/terrain.glsl"

@@ -28,7 +28,7 @@ void main() {
 #include "/lib/distort.glsl"
 
 // Color we wrote to
-uniform sampler2D colortex0;
+uniform sampler2D colortex0; // albedo
 uniform sampler2D colortex1; // normal
 uniform sampler2D colortex2; // lightmap
 
@@ -135,7 +135,7 @@ struct Light {
 };
 
 vec3 blocklightColor(float T) {
-    const vec3 Warm = vec3(1.0, 0.5843, 0.2863);
+    const vec3 Warm = vec3(1.0, 0.9294, 0.7176);
     const vec3 White = vec3(1.0, 1.0, 1.0);
     const vec3 Cold = vec3(0.749, 0.9647, 1.0);
 
@@ -152,10 +152,8 @@ vec3 blocklightColor(float T) {
 
 vec3 incomingLight(Surface surface, float blocklight, float skylight, Shadow shadow)
 {
-    const vec3 Warm = vec3(1.0, 0.6941, 0.2902);
-
     float block     = pow(blocklight, 3.2);   // (.1, 3)
-    vec3  blockclr  = blocklightColor(.08) * block * 1.1;
+    vec3  blockclr  = blocklightColor(0) * block * 1.1; // 0 is the Torch
     float sky       = pow(skylight, 2.5);     // (.1, 3)
     vec3  skyclr    = SkyColor * sky;
 
@@ -212,15 +210,16 @@ void main() {
     Surface surface;
     {
         vec4 s = texture2D(colortex0, TexCoords);
-        surface.albedo = texture2D(colortex0, TexCoords).rgb;
+        surface.albedo = s.rgb;
         surface.alpha = s.a;
     }
 
     float depth = texture2D(depthtex0, TexCoords).r;
     if (depth == 1.0f) {
-        gl_FragData[0] = vec4(surface.albedo, 1.0);
+        gl_FragData[0] = vec4(surface.albedo, surface.alpha);
         return;
     }
+
     surface.albedo = tolinear(surface.albedo);
 
     surface.normal = normalize(texture2D(colortex1, TexCoords).rgb * 2.0f - 1.0f);
@@ -243,6 +242,7 @@ void main() {
     diffuse = surface.albedo * mainLight;
 
     diffuse = togamma(diffuse); // convert to gamma space
+
     diffuse = mix(diffuse, _debug_value.rgb, _debug_value.a);
 
  /* DRAWBUFFERS:0 */

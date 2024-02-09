@@ -11,7 +11,7 @@ varying vec2 TexCoords;
 
 // const vec3 TorchColor = vec3(1.0f, 0.25f, 0.08f);
 // const vec3 SkyColor = vec3(0.05f, 0.15f, 0.3f);
-
+// 158 -10 +202 +11 == 
 #ifdef __VERTEX__
 
 uniform float day;
@@ -44,10 +44,14 @@ uniform ivec2 eyeBrightnessSmooth; // somehow used to detect distance
 uniform vec3 sunPosition;
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
+uniform mat4 gbufferModelView;
 uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
 
 const float sunPathRotation = -9.0;
+
+uniform float aspectRatio;
+uniform vec3 cameraPosition;
 
 // vec3 TransparentShadow(in vec3 SampleCoords, float ShadowVisibility0, float ShadowVisibility1)
 // {
@@ -56,6 +60,14 @@ const float sunPathRotation = -9.0;
 //     vec3 TransmittedColor = ShadowColor0.rgb * (1.0f - ShadowColor0.a);
 //     return mix(TransmittedColor * ShadowVisibility1, vec3(1.0f), ShadowVisibility0);
 // }
+
+vec3 viewSpacePixel(vec2 texCoord, float depth) {
+    vec3 clipSpace = vec3(texCoord, depth) * 2.0f - 1.0f;
+    vec4 viewW = gbufferProjectionInverse * vec4(clipSpace, 1.0f);
+    vec3 view = viewW.xyz / viewW.w;
+
+    return view;
+}
 
 vec4 worldSpacePixel(vec2 texCoord, float depth) {
     vec3 clipSpace = vec3(texCoord, depth) * 2.0f - 1.0f;
@@ -118,8 +130,11 @@ Shadow incomingShadow(float depth) {
 
 struct Surface {
     vec3 normal;
-    vec3 albedo;
+    vec3 viewDirection;
+    vec3 color;
     float alpha;
+    float metallic;
+    float smoothness;
 };
 
 // LIGHT PARAMETERS
@@ -129,13 +144,8 @@ const vec3 SkyColor = vec3(0.8902, 1.0, 0.9843);
 const vec3 SunColor = vec3(1.0, 0.9922, 0.9216);
 const vec3 BaseBlocklightColor = vec3(1.0, 0.9098, 0.7373);
 
-struct Light {
-    vec3 color;
-    vec3 direction;
-};
-
 vec3 blocklightColor(float T) {
-    const vec3 Warm = vec3(1.0, 0.9294, 0.7176);
+    const vec3 Warm = vec3(1.0, 0.9059, 0.6235);
     const vec3 White = vec3(1.0, 1.0, 1.0);
     const vec3 Cold = vec3(0.749, 0.9647, 1.0);
 
@@ -150,7 +160,12 @@ vec3 blocklightColor(float T) {
     return getGradient(vec4(Warm, 0), vec4(White, .3), vec4(White, .9), vec4(Cold, 1), T);
 }
 
-vec3 incomingLight(Surface surface, float blocklight, float skylight, Shadow shadow)
+struct Light {
+    vec3 color;
+    vec4 direction;
+};
+
+Light incomingLight(Surface surface, float blocklight, float skylight, Shadow shadow)
 {
     float block     = pow(blocklight, 3.2);   // (.1, 3)
     vec3  blockclr  = blocklightColor(0) * block * 1.1; // 0 is the Torch
@@ -187,42 +202,139 @@ vec3 incomingLight(Surface surface, float blocklight, float skylight, Shadow sha
     // TODO: 
 
     // Mask out shadows in blocklight
-    vec3 lightValue = AmbientLight;
-    lightValue += (env + blockblend) * 1.5;
+    Light light;
+    light.color = (env + blockblend) * 1.5;
+    // debug(sunPosition / 100.0);
+    light.direction = vec4(normalize(sunPosition), 1);
     // TODO: Tonemapping outside this function
     
-    /*
-    OUTSIDE: (skylight is low)
-    - Blocklights do not affect shadows that much
-    INSIDE: (sky light < 10)
-    - Sunlight is less powerfull, but shadow colors matter
     
-    Calculate Inndoor and Outdoor
-    Mix by using the Skylight
-
-    */
-
-    return lightValue;
+    return light;
 }
 
+struct BRDF {
+    vec3 diffuse;
+    vec3 specular;
+    float roughness;
+};
+
+BRDF getBRDF(Surface surface)
+{
+    BRDF brdf;
+    const float MinReflectivity = 0.04;
+
+    float oneMinusReflectivity; {
+        const float range = 1 - MinReflectivity;
+        oneMinusReflectivity = range - surface.metallic * range;
+    }
+    brdf.diffuse = surface.color * oneMinusReflectivity;
+    brdf.specular = mix(vec3(MinReflectivity), surface.color, surface.metallic);
+
+    float roughness; {
+        // TODO: Tweak perceptual smoothness
+        /*
+        Smoothness is curved by a square, because it makes editing materials more intuitive
+        This may depend on Texture Packs installed though..
+        Settings may be required
+        */
+        roughness = 1 - surface.smoothness;
+    }
+
+	brdf.roughness = roughness;
+    return brdf;
+}
+
+float specularStrenght(Surface surface, BRDF brdf, Light light) {
+    /*
+    light.direction.xyz:   -> sun
+    surface.normal:        normal in view space
+    surface.viewDirection: view space position -> 0 0 0
+    */
+    
+    vec3 fragToEye = normalize(surface.viewDirection);
+    vec3 reflected = normalize(reflect(-light.direction.xyz, surface.normal));
+
+    float factor = dot(fragToEye, reflected);
+
+    // Desmos: \left(\frac{\left(x+a-1\right)}{a}\right)^{b}\cdot c
+    const float Threshold = .05;
+    const float Power = 7.5;
+    const float HighPoint = 4;
+
+    factor = pow(
+        (factor + Threshold - 1) / Threshold,
+        Power
+    ) * HighPoint;
+
+    // debugldr(factor);
+    // debug(fragToEye * vec3(-1, -1, 1));
+
+    return 1 + max(factor, 0);
+}
+
+vec3 directBRDF(Surface surface, BRDF brdf, Light light) {
+    return specularStrenght(surface, brdf, light) * brdf.specular + brdf.diffuse;
+}
+
+vec3 getLighting(Surface surface, BRDF brdf, Light light) {
+    return light.color * directBRDF(surface, brdf, light);
+}
 
 void main() {
     Surface surface;
     {
         vec4 s = texture2D(colortex0, TexCoords);
-        surface.albedo = s.rgb;
+        surface.color = s.rgb;
         surface.alpha = s.a;
     }
 
     float depth = texture2D(depthtex0, TexCoords).r;
     if (depth == 1.0f) {
-        gl_FragData[0] = vec4(surface.albedo, surface.alpha);
+        gl_FragData[0] = vec4(surface.color, surface.alpha);
         return;
     }
 
-    surface.albedo = tolinear(surface.albedo);
+    vec4 worldPosition = worldSpacePixel(TexCoords, depth);
+
+    surface.color = tolinear(surface.color);
 
     surface.normal = normalize(texture2D(colortex1, TexCoords).rgb * 2.0f - 1.0f);
+
+    // Temp
+    surface.smoothness = 0.75;
+    surface.metallic = 0.5;
+
+    // TODO: More efficient method for View Space calculation
+    {
+        vec3 viewPosition = viewSpacePixel(TexCoords, depth);
+        surface.viewDirection = -viewPosition;
+        // surface.viewDirection = vec3(0, 0, -depth);
+        // viewPosition *= float(viewPosition.x < 1) * float(viewPosition.y < 1);
+
+        // debug(viewPosition
+        // *   float(viewPosition.x < 1)
+        // *   float(viewPosition.y < 1)
+        // *   float(viewPosition.x > 0)
+        // *   float(viewPosition.y > 0)
+        // );
+        // float fov = 90;
+        // vec2 clipUV = TexCoords * 2.0 - 1.0;
+        // // clipUV *= tan(fov / 2);
+        // // clipUV.x *= aspectRatio;
+        // vec3 viewVector = vec3(clipUV, 1);
+        // surface.viewDirection = normalize(viewVector);
+
+        // debug(surface.viewDirection);
+        // // vec3 viewPosition = viewSpacePixel(TexCoords, depth);
+        // // debug(viewPosition);
+        // // surface.viewDirection = viewPosition;
+        // // debug(surface.viewDirection);
+    }
+
+    // debug(sunDirVS);
+
+    // debug(surface.viewDirection);
+    // debug(surface.normal);
 
     float blocklight;
     float skylight;
@@ -236,10 +348,23 @@ void main() {
     
     Shadow shadow = incomingShadow(depth);
     
-    vec3 mainLight = incomingLight(surface, blocklight, skylight, shadow);
-    // debug(mainLight);
-    // getLighting
-    diffuse = surface.albedo * mainLight;
+    Light mainLight = incomingLight(surface, blocklight, skylight, shadow);
+    
+    // vec4 sunPosWS = gbufferModelViewInverse * vec4(sunPosition, 1);
+    // vec3 sunDirWS = cameraPosition - sunPosWS.rgb;
+    // vec3 sunDirVS = (gbufferModelView * vec4(sunDirWS, 1)).rgb;
+    // mainLight.direction.rgb = sunDirVS;
+
+    BRDF brdf = getBRDF(surface);
+
+    diffuse = getLighting(surface, brdf, mainLight);
+
+    // debug(surface.normal);
+    // debug(specularStrenght(surface, brdf, mainLight) * diffuse);
+
+    // debug(dot(mainLight.direction.xyz, surface.viewDirection));
+    // debug(mainLight.direction.xyz);
+    // debug(sunPosition / 100);
 
     diffuse = togamma(diffuse); // convert to gamma space
 
@@ -272,6 +397,31 @@ Color interpolator:
     gameLight is more important
 
     realLight is able to shade areas from gameLight
+
+composite.fsh: composite.fsh: 0(158) : error C0000: syntax error, unexpected '(', expecting "::" at token "("
+0(160) : error C1503: undefined variable "block"
+0(161) : error C1503: undefined variable "skylight"
+0(163) : error C1503: undefined variable "surface"
+0(164) : error C1503: undefined variable "shadow"
+0(164) : error C1503: undefined variable "shadow"
+0(166) : error C1503: undefined variable "shadow"
+0(166) : error C1503: undefined variable "shadow"
+0(166) : error C1503: undefined variable "shadow"
+0(167) : error C0000: syntax error, unexpected '=', expecting "::" at token "="
+0(169) : error C1503: undefined variable "shadow"
+0(170) : error C1503: undefined variable "skylight"
+0(170) : error C1503: undefined variable "skylight"
+0(171) : error C0000: syntax error, unexpected '=', expecting "::" at token "="
+0(175) : error C0000: syntax error, unexpected ';', expecting "::" at token ";"
+0(183) : error C0000: syntax error, unexpected '}' at token "}"
+0(191) : error C1009: "color" is not member of struct "Surface"
+0(192) : error C7011: implicit cast from "float" to "vec3"
+0(196) : error C0000: syntax error, unexpected ')', expecting "::" at token ")"
+0(197) : error C1503: undefined variable "light"
+0(197) : error C1503: undefined variable "brdf"
+0(224) : error C0000: syntax error, unexpected '=', expecting "::" at token "="
+0(226) : error C1503: undefined variable "mainLight"
+0(226) : error C1104: too many parameters in function call
 
     // VANILLA LIGHT FORMULA (Missing Something ??)
     */

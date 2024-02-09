@@ -69,6 +69,17 @@ void debugldr(float value) {
 
 #include "option.glsl"
 
+float square(float v) {
+    return v * v;
+}
+
+float clamp01(float v) {
+    return clamp(v, 0, 1);
+}
+
+vec3 clamp01(vec3 v) {
+    return clamp(v, 0, 1);
+}
 
 vec3 tolinear(vec3 color) {
     return pow(color, vec3(2.2f));

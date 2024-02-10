@@ -164,7 +164,7 @@ vec3 blocklightColor(float T) {
 struct Light {
     vec3 color;
     vec3 direction;
-    vec3 specular;
+    float directional;
 };
 
 Light incomingLight(Surface surface, float blocklight, float skylight, Shadow shadow)
@@ -209,7 +209,7 @@ Light incomingLight(Surface surface, float blocklight, float skylight, Shadow sh
     light.color = (env + blockblend) * 1.5;
     // debug(sunPosition / 100.0);
     light.direction = normalize(sunPosition);
-    light.specular = sunlight_clr * sunlight;
+    light.directional = sunlight;
     
     // TODO: Tonemapping outside this function
     
@@ -217,40 +217,7 @@ Light incomingLight(Surface surface, float blocklight, float skylight, Shadow sh
     return light;
 }
 
-struct BRDF {
-    vec3 diffuse;    // Surface color held onto by the material
-    vec3 specular;   // Surface color reflected
-    float roughness;
-};
-
-BRDF getBRDF(Surface surface)
-{
-    BRDF brdf;
-    const float MinReflectivity = 0.04;
-
-    float oneMinusReflectivity; {
-        const float range = 1 - MinReflectivity;
-        oneMinusReflectivity = range - surface.metallic * range;
-    }
-    brdf.diffuse = surface.color * oneMinusReflectivity;
-    brdf.specular = mix(vec3(MinReflectivity), surface.color, surface.metallic);
-
-    float roughness; {
-        // TODO: Tweak perceptual smoothness
-        /*
-        Smoothness is curved by a square, because it makes editing materials more intuitive
-        This may depend on Texture Packs installed though..
-        Settings may be required
-        */
-        float perceptualRoughness = 1 - surface.smoothness;
-        roughness = square(perceptualRoughness);
-    }
-
-	brdf.roughness = roughness;
-    return brdf;
-}
-
-float specularStrenght(Surface surface, BRDF brdf, Light light) {
+float specularStrenght(Surface surface, Light light) {
     /*
     light.direction.xyz:   -> sun
     surface.normal:        normal in view space
@@ -276,18 +243,48 @@ float specularStrenght(Surface surface, BRDF brdf, Light light) {
     // debug(fragToEye * vec3(-1, -1, 1));
 
     return max(factor, 0);
+
+    // float roughness; {
+    //     float perceptualRoughness = 1 - surface.smoothness;
+    //     roughness = square(perceptualRoughness);
+    // }
+
+    // vec3 h = normalize(-light.direction + surface.viewDirection);
+	// float nh2 = square(clamp01(dot(surface.normal, h)));
+	// float lh2 = square(clamp01(dot(light.direction, h)));
+	// float r2 = square(roughness);
+	// float d2 = square(nh2 * (r2 - 1.0) + 1.00001);
+	// float normalization = roughness * 4.0 + 2.0;
+	// return r2 / (d2 * max(0.1, lh2) * normalization);
 }
 
-vec3 directBRDF(Surface surface, BRDF brdf, Light light) {
-    vec3 specularHighlight = specularStrenght(surface, brdf, light)
-        * light.specular
-        * brdf.specular;
+vec3 BRDF(Surface surface, Light light) {
+    const float MinReflectivity = 0.04;
 
-    return brdf.diffuse + specularHighlight;
-}
+    // Light that enters the material
+    vec3 incomingLight = surface.color * light.color;
 
-vec3 getLighting(Surface surface, BRDF brdf, Light light) {
-    return light.color * directBRDF(surface, brdf, light);
+    // Divide the light into diffused, and reflected
+    vec3 diffuse; vec3 specular;
+    {
+        const float range = 1 - MinReflectivity;
+        float oneMinusReflectivity = range - surface.metallic * range;
+    
+        diffuse = incomingLight * oneMinusReflectivity;
+        specular = mix(vec3(MinReflectivity), incomingLight, surface.metallic);
+
+        // debug(diffuse);
+    }
+
+    // DirectBRDF
+    vec3 direct = diffuse;
+
+    // Specular Highlights
+    direct += specularStrenght(surface, light)
+        * light.directional * light.color
+        * specular;
+    
+    return direct;
 }
 
 void main() {
@@ -307,6 +304,8 @@ void main() {
     }
 
     vec4 worldPosition = worldSpacePixel(TexCoords, depth);
+
+    // TODO: Pixel Perfect ??
 
     surface.color = tolinear(surface.color);
 
@@ -337,9 +336,7 @@ void main() {
     
     Light mainLight = incomingLight(surface, blocklight, skylight, shadow);
     
-    BRDF brdf = getBRDF(surface);
-
-    diffuse = getLighting(surface, brdf, mainLight);
+    diffuse = BRDF(surface, mainLight);
 
     diffuse = togamma(diffuse); // convert to gamma space
 

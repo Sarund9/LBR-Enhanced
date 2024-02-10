@@ -54,7 +54,6 @@ const float sunPathRotation = -9.0;
 uniform float aspectRatio;
 uniform vec3 cameraPosition;
 
-const float TextureSize = 16;
 
 // vec3 TransparentShadow(in vec3 SampleCoords, float ShadowVisibility0, float ShadowVisibility1)
 // {
@@ -72,14 +71,13 @@ vec3 viewSpacePixel(vec2 texCoord, float depth) {
     return view;
 }
 
-vec4 worldSpacePixel(vec2 texCoord, float depth) {
+vec4 relativeWorldSpacePixel(vec2 texCoord, float depth) {
     vec3 clipSpace = vec3(texCoord, depth) * 2.0f - 1.0f;
     vec4 viewW = gbufferProjectionInverse * vec4(clipSpace, 1.0f);
     vec3 view = viewW.xyz / viewW.w;
 
     return gbufferModelViewInverse * vec4(view, 1.0f);
 }
-
 
 // TODO: Better Shadow mapping
 /*
@@ -113,8 +111,7 @@ float visibility(in sampler2D map, in vec3 coords) {
     return step(coords.z - 0.001f, texture2D(map, coords.xy).r);
 }
 
-Shadow incomingShadow(float depth) {
-    vec4 posWS = worldSpacePixel(TexCoords, depth);
+Shadow incomingShadow(vec4 posWS) {
     vec4 posSS = shadowProjection * shadowModelView * posWS;
     
     posSS.xy = distortPosition(posSS.xy);
@@ -294,13 +291,16 @@ void main() {
         // debug(s.rgb);
     }
 
+    // debug(texture2D(shadowcolor0, TexCoords).rgb);
+
     float depth = texture2D(depthtex0, TexCoords).r;
     if (depth == 1.0f) {
         gl_FragData[0] = vec4(surface.color, surface.alpha);
         return;
     }
 
-    vec4 worldPosition = worldSpacePixel(TexCoords, depth);
+    vec4 posRWS = relativeWorldSpacePixel(TexCoords, depth);
+    vec4 posWS = vec4(cameraPosition, 0) + posRWS;
 
     surface.color = tolinear(surface.color);
 
@@ -326,8 +326,14 @@ void main() {
     
     vec3 diffuse;
     
-    Shadow shadow = incomingShadow(depth);
-    
+    // vec4 shadowSample = voxelPerfect(posWS, 16) - vec4(cameraPosition, 0);
+    // shadowSample += vec4(.001);
+    Shadow shadow = incomingShadow(posRWS);
+    // TODO: Multisampling to fix Pixel Perfect Shadows
+    // IDEA: Round the position from which shadow-sampling happens to be Pixel perfect
+    //  BUT: Camera Alignment
+    // NEW: Pixel Perfect Anti-Aliasing ????
+
     // TODO: Pixel Perfect ??
     // 
 

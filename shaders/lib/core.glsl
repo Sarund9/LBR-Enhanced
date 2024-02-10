@@ -211,4 +211,12 @@ vec3 getGradient(vec4 c1, vec4 c2, vec4 c3, vec4 c4, float value_) {
 	return col;
 }
 
+vec4 voxelPerfect(vec4 value, float voxelSize) {
+    // const float BlockTextureSize = 16.0; // TODO: Texture Size Menu Option
+    vec4 pix = value * voxelSize;
+    pix = floor(pix);
+    pix += vec4(.5);
+    return pix / voxelSize;
+}
+
 #endif

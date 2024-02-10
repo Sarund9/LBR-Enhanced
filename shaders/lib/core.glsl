@@ -10,6 +10,8 @@ depthtex0: shadows
 
 */
 
+const float PI = 3.14159265359;
+
 vec4 _debug_value;
 
 void debug(vec3 value) {
@@ -98,11 +100,11 @@ float linearstep(float value, float a, float b) {
 }
 
 vec3 mixstep(vec3 value, float xMin, float xMax, float yMin, float yMax) {
-    return mix(linearstep(value, xMin, xMax), vec3(yMin), yMax);
+    return mix(vec3(yMin), vec3(yMax), linearstep(value, xMin, xMax));
 }
 
 float mixstep(float value, float xMin, float xMax, float yMin, float yMax) {
-    return mix(linearstep(value, xMin, xMax), yMin, yMax);
+    return mix(yMin, yMax, linearstep(value, xMin, xMax));
 }
 
 float avg(vec3 vec) {
@@ -110,15 +112,68 @@ float avg(vec3 vec) {
 }
 
 // Polynomial smooth min
-float smin(float a, float b, float k) {
+float psmin(float a, float b, float k) {
     float h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
     return mix(a, b, h) - k*h*(1.0-h);
 }
 
 // Polynomial smooth min
-vec3 smin(vec3 a, vec3 b, float k) {
+vec3 psmin(vec3 a, vec3 b, float k) {
     vec3 h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
     return mix(a, b, h) - k*h*(1.0-h);
+}
+
+/*
+Logic Step Interpolation
+k = 0 returns the average
+Non-Zero values provide a smooth min/max
+Greater (abs) values provide a more accurate result.
+5/-5 is recommended at least.
+*/
+float lstep(float a, float b, float k)
+{
+    // Desmos: S\left(a,\ b,\ k\right)=\frac{\left(a\cdot\exp\left(ka\right)+b\cdot\exp\left(kb\right)\right)}{\exp\left(ka\right)+\exp\left(kb\right)}
+    float x = exp(k * a);
+    float y = exp(k * b);
+    return (a * x + b * y) / (x + y);
+}
+
+vec3 lstep(vec3 a, vec3 b, float k)
+{
+    vec3 x = exp(k * a);
+    vec3 y = exp(k * b);
+    return (a * x + b * y) / (x + y);
+}
+
+float stepmask(float value, float a, float b) {
+    float G = float(value >= a);
+    float L = float(value <= b);
+
+    return G * L;
+}
+
+float stepmask(float value, float a, float b, float k) {
+    
+    float aDiff = value - a;
+    float bDiff = value - b;
+
+    float range = abs(a - b) * k;
+
+    float transition = clamp01(linearstep(a - range, a + range, value))
+                     * clamp01(linearstep(b - range, b + range, value));
+
+    
+
+    /*
+    When v==a, .5
+    When v==a-range, 0
+
+    */
+
+    float extended = stepmask(value, a - range, b + range);
+    float retracted = stepmask(value, a + range, b - range);
+
+    return smoothstep(extended, retracted, transition);
 }
 
 // Applies stylized shading to a color
@@ -158,6 +213,14 @@ float packNormal(float value, float mult) {
 
 float n_raiseStart(float value, float T) {
     return (1 - T) * value + T;
+}
+
+float bellcurve(float value, float width, float lowest, float damp) {
+    // Desmos: 1-\left(\frac{x-.5}{.5a}\right)^{2}
+    float curve = 1 - square((value - 0.5) / (width * 0.5));
+    float high = lstep(curve, lowest, 5 + damp);
+
+    return high;
 }
 
 vec3 oklab_mix( vec3 colA, vec3 colB, float h )

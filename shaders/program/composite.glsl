@@ -183,7 +183,8 @@ Light incomingLight(Surface surface, float blocklight, float skylight, Shadow sh
     float sunlight = trueshadow * inl;
 
     // TODO: Make shadow color resaturate better during dawn/dusk
-    vec3 sunlight_clr = mix(SunColor, resaturate(shadow.color, 1.5), smask);
+    vec3 shadowclr = resaturate(shadow.color, 1.5);
+    vec3 sunlight_clr = mix(SunColor, shadowclr, smask);
 
     // TODO: Vary sun color based on time of day
     
@@ -209,7 +210,7 @@ Light incomingLight(Surface surface, float blocklight, float skylight, Shadow sh
     // debug(sunPosition / 100.0);
     light.direction = normalize(sunPosition);
     light.specular = sunlight_clr * sunlight;
-    // debug(sunlight_clr * sunlight);
+    
     // TODO: Tonemapping outside this function
     
     
@@ -217,8 +218,8 @@ Light incomingLight(Surface surface, float blocklight, float skylight, Shadow sh
 }
 
 struct BRDF {
-    vec3 diffuse;
-    vec3 specular;
+    vec3 diffuse;    // Surface color held onto by the material
+    vec3 specular;   // Surface color reflected
     float roughness;
 };
 
@@ -241,7 +242,8 @@ BRDF getBRDF(Surface surface)
         This may depend on Texture Packs installed though..
         Settings may be required
         */
-        roughness = 1 - surface.smoothness;
+        float perceptualRoughness = 1 - surface.smoothness;
+        roughness = square(perceptualRoughness);
     }
 
 	brdf.roughness = roughness;
@@ -270,14 +272,18 @@ float specularStrenght(Surface surface, BRDF brdf, Light light) {
         Power
     ) * HighPoint;
 
-    // debugldr(factor);
+    // debug(factor);
     // debug(fragToEye * vec3(-1, -1, 1));
 
-    return 1 + max(factor, 0);
+    return max(factor, 0);
 }
 
 vec3 directBRDF(Surface surface, BRDF brdf, Light light) {
-    return specularStrenght(surface, brdf, light) * light.specular * brdf.specular + brdf.diffuse;
+    vec3 specularHighlight = specularStrenght(surface, brdf, light)
+        * light.specular
+        * brdf.specular;
+
+    return brdf.diffuse + specularHighlight;
 }
 
 vec3 getLighting(Surface surface, BRDF brdf, Light light) {
@@ -312,9 +318,7 @@ void main() {
     surface.metallic = specData.g;
     // TODO: Subsurface/Porosity/
     // TODO: Emmision
-    // debug(surface.normal);
-
-
+    
     vec3 viewPosition = viewSpacePixel(TexCoords, depth);
     surface.viewDirection = -viewSpacePixel(TexCoords, depth);
 

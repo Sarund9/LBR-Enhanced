@@ -54,6 +54,8 @@ const float sunPathRotation = -9.0;
 uniform float aspectRatio;
 uniform vec3 cameraPosition;
 
+const float TextureSize = 16;
+
 // vec3 TransparentShadow(in vec3 SampleCoords, float ShadowVisibility0, float ShadowVisibility1)
 // {
 //     vec4 ShadowColor0 = texture2D(shadowcolor0, SampleCoords.xy);
@@ -93,7 +95,7 @@ const int ShadowSamplesPerSize = 2 * SHADOW_SAMPLES + 1;
 const int TotalSamples = ShadowSamplesPerSize * ShadowSamplesPerSize;
 
 // Engine Parameters
-const int shadowMapResolution = 2048;
+const int shadowMapResolution = 1024;
 const int noiseTextureResolution = 128;
 
 struct Shadow {
@@ -231,23 +233,20 @@ float specularStrenght(Surface surface, Light light) {
 
     // Desmos: \left(\frac{\left(x+a-1\right)}{a}\right)^{b}\cdot c
     const float Threshold = .05;
-    const float Power = 7.5;
-    const float HighPoint = 9;
+    const float Power = 6;
 
     factor = pow(
         (factor + Threshold - 1) / Threshold,
         Power
-    ) * HighPoint;
-
-    // debug(factor);
-    // debug(fragToEye * vec3(-1, -1, 1));
+    );
+    
+    float roughness; {
+        float perceptualRoughness = 1 - surface.smoothness;
+        roughness = square(perceptualRoughness);
+    }
+    // TODO: Roughness
 
     return max(factor, 0);
-
-    // float roughness; {
-    //     float perceptualRoughness = 1 - surface.smoothness;
-    //     roughness = square(perceptualRoughness);
-    // }
 
     // vec3 h = normalize(-light.direction + surface.viewDirection);
 	// float nh2 = square(clamp01(dot(surface.normal, h)));
@@ -259,30 +258,28 @@ float specularStrenght(Surface surface, Light light) {
 }
 
 vec3 BRDF(Surface surface, Light light) {
-    const float MinReflectivity = 0.04;
-
+    
     // Light that enters the material
     vec3 incomingLight = surface.color * light.color;
 
     // Divide the light into diffused, and reflected
     vec3 diffuse; vec3 specular;
     {
-        const float range = 1 - MinReflectivity;
-        float oneMinusReflectivity = range - surface.metallic * range;
-    
-        diffuse = incomingLight * oneMinusReflectivity;
-        specular = mix(vec3(MinReflectivity), incomingLight, surface.metallic);
+        vec3 minReflect = vec3(0.04) * light.color;
 
-        // debug(diffuse);
+        // LBR: Total light color is doubled, metals keep 50% of their color, and nonmetals reflect 50%
+        diffuse = mix(minReflect, incomingLight, 1 - surface.metallic * .5);
+        specular = mix(minReflect, incomingLight, surface.metallic);
     }
 
     // DirectBRDF
     vec3 direct = diffuse;
 
     // Specular Highlights
-    direct += specularStrenght(surface, light)
-        * light.directional * light.color
-        * specular;
+    float specularMask = specularStrenght(surface, light) * 3;
+    // debug(specularMask);
+    direct += specularMask
+        * resaturate(specular, 2); // LBR: Specular Highlight Saturation
     
     return direct;
 }
@@ -305,8 +302,6 @@ void main() {
 
     vec4 worldPosition = worldSpacePixel(TexCoords, depth);
 
-    // TODO: Pixel Perfect ??
-
     surface.color = tolinear(surface.color);
 
     surface.normal = normalize(texture2D(colortex1, TexCoords).rgb * 2.0f - 1.0f);
@@ -321,7 +316,6 @@ void main() {
     vec3 viewPosition = viewSpacePixel(TexCoords, depth);
     surface.viewDirection = -viewSpacePixel(TexCoords, depth);
 
-
     float blocklight;
     float skylight;
     {
@@ -334,6 +328,9 @@ void main() {
     
     Shadow shadow = incomingShadow(depth);
     
+    // TODO: Pixel Perfect ??
+    // 
+
     Light mainLight = incomingLight(surface, blocklight, skylight, shadow);
     
     diffuse = BRDF(surface, mainLight);

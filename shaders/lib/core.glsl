@@ -257,7 +257,7 @@ float dampadd(float a, float b, float e, float t, float k) {
     float add = a + b;
     float damp = pow(add, e) + t;
 
-    return smin(add, damp, k);
+    return psmin(add, damp, k);
 }
 
 vec3 getGradient(vec4 c1, vec4 c2, vec4 c3, vec4 c4, float value_) {

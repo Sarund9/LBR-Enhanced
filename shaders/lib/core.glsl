@@ -128,7 +128,7 @@ Logic Step Interpolation
 k = 0 returns the average
 Non-Zero values provide a smooth min/max
 Greater (abs) values provide a more accurate result.
-5/-5 is recommended at least.
+-5/5 is recommended at least.
 */
 float lstep(float a, float b, float k)
 {

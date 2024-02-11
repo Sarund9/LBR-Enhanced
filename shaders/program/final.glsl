@@ -16,8 +16,14 @@ void main() {
 
 #ifdef __PIXEL__
 
-uniform sampler2D colortex0;
+uniform sampler2D colortex7;
 uniform sampler2D depthtex0;
+
+// TEXTURE FORMATS
+const int RGBA32F = 1;
+const int R32F = 1;
+const int colortex7Format = RGBA32F;
+
 
 uniform float viewWidth;
 uniform float viewHeight;
@@ -46,7 +52,7 @@ uniform float viewHeight;
 // }
 
 void main() {
-    vec3 color = texture2D(colortex0, TexCoords).rgb;
+    vec3 color = texture2D(colortex7, TexCoords).rgb - vec3(1);
 
     // mat3 depthMatrix;
     // vec2 pixelSize = vec2(1.0 / viewWidth, 1.0 / viewHeight);

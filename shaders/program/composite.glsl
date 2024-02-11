@@ -39,6 +39,23 @@ uniform sampler2D shadowtex0;   // shadow attenuation
 uniform sampler2D shadowtex1;   // shadow (no transparents)
 uniform sampler2D shadowcolor0; // shadow colors
 
+// Trying to see what these are
+// uniform sampler2D shadowcolor;  // Identical to shadowcolor0
+// uniform sampler2D shadowcolor1; // (Seemingly) Identical
+// uniform sampler2D shadow;       // Identical to shadowtex0
+// uniform sampler2D watershadow;  // Identical
+/*
+Documentation Values:
+4: watershadow shadowtex0 shadow(if water shadows disabled)
+5: shadowtex1 shadow(if water shadows enabled)
+
+13: shadowcolor shadowcolor0
+14: shadowcolor1
+
+Q: Why is shadowcolor1
+*/
+
+
 uniform sampler2D noisetex; // Utility noise texture
 
 uniform mat4 gbufferProjectionInverse;
@@ -106,6 +123,8 @@ struct Shadow {
     float brightness;        // How bright is the sun
     float solidAttenuation;  // Transparents are solid
     float clipAttenuation;   // Transparents are cut out
+    // TODO
+    // float water;          // 
 };
 
 vec3 shadowColor(Shadow shadow) {
@@ -257,6 +276,7 @@ Light incomingLight(Surface surface, float blocklight, float skylight, Shadow sh
     float smask = (shadow.clipAttenuation - shadow.solidAttenuation); // TODO: <- this may have bugs
     float inl  = max(dots, smask * .9) * sunFactor;
 
+    // debug(shadow.brightness);
     float trueshadow = mix(shadow.clipAttenuation * shadow.brightness, 1, shadow.solidAttenuation);
     trueshadow = clamp01(trueshadow);
     
@@ -384,7 +404,7 @@ void main() {
 
     float depth = texture2D(depthtex0, TexCoords).r;
     if (depth == 1.0f) {
-        gl_FragData[0] = vec4(surface.color, surface.alpha);
+        gl_FragData[0] = vec4(surface.color + vec3(1), surface.alpha);
         return;
     }
 
@@ -393,7 +413,12 @@ void main() {
 
     surface.color = tolinear(surface.color);
 
-    surface.normal = normalize(texture2D(colortex1, TexCoords).rgb * 2.0f - 1.0f);
+    float water;
+    {
+        vec4 sample = texture2D(colortex1, TexCoords);
+        surface.normal = normalize(sample.rgb * 2.0f - 1.0f);
+        water = 1 - sample.a; // 0 is water
+    }
 
     vec4 specData = texture2D(colortex3, TexCoords);
 
@@ -417,6 +442,8 @@ void main() {
     
     Shadow shadow = incomingShadow(posRWS);
     
+    // debug(shadow.color);
+
     Light mainLight = incomingLight(surface, blocklight, skylight, shadow);
     
     diffuse = BRDF(surface, mainLight);
@@ -425,8 +452,8 @@ void main() {
 
     diffuse = mix(diffuse, _debug_value.rgb, _debug_value.a);
 
- /* DRAWBUFFERS:0 */
-    gl_FragData[0] = vec4(diffuse, 1);
+ /* DRAWBUFFERS:7 */
+    gl_FragData[0] = vec4(diffuse + vec3(1), 1);
 }
 
 #endif

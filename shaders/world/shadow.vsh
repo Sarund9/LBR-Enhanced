@@ -2,4 +2,4 @@
 
 #define __VERTEX__
 
-#include "/program/shadow.glsl"
+#include "/program/shadowpass.glsl"

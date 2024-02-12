@@ -17,9 +17,9 @@ Water: 5
 
 */
 
-const int BaseID = 1000;
+const int BaseID = 10000;
 
-const int ID_Water          = BaseID + 5;
+const int ID_Water = 3;
 
 
 
@@ -81,8 +81,6 @@ void debugldr(float value) {
 // vec3 pow3() {
 
 // }
-
-#include "option.glsl"
 
 float square(float v) {
     return v * v;
@@ -193,6 +191,10 @@ float stepmask(float value, float a, float b, float k) {
     float retracted = stepmask(value, a + range, b - range);
 
     return smoothstep(extended, retracted, transition);
+}
+
+void stepgrad(inout float grad, float value, float threshold) {
+    grad = max(grad, step(threshold, value) * threshold);
 }
 
 // Applies stylized shading to a color

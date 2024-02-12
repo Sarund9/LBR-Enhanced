@@ -5,18 +5,14 @@ Surface Geometry Descriptor
 Used:
   program/deferred
 
-Uniforms:
-
-Samplers:
-
-
 Requires:
   lib/core
   lib/space
   lib/distort
   lib/shadow
 
-Samplers are never required
+Uniforms:
+
 
 */
 
@@ -31,11 +27,11 @@ struct Surface {
     float smoothness;
 };
 
-Surface getSurface(
+Surface newSurface(
     vec4 sceneColor,    // Raw sampled color from the Scene
     vec4 sceneNormal,   // Raw sampled normal from the Scene
     vec4 sceneDetail,   // Raw sampled 'specular' from the Scene
-    vec3 viewPosition
+    vec3 viewPosition   // View-Space position of Surface
 ) {
     Surface surface;
 

@@ -31,15 +31,9 @@ void main() {
     vec3 color = texture2D(colortex7, TexCoords).rgb;
 
     color = togamma(color); // convert to gamma space
-    // float depth = texture2D(depthtex1, TexCoords).r;
-
-    // float debugged = texture2D(colortex4, TexCoords).r;
-
-    // depth = smoothstep(.9, 1, depth);
-    // depth = pow(depth, 10);
-
-    // color = vec3(depth);
     
+    
+
     gl_FragColor = vec4(color, 1.0);
 }
 

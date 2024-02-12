@@ -6,15 +6,15 @@ Used:
   program/deferred
   program/shadowpass
 
-Uniforms:
-  shadowProjection
-  shadowModelView
-  
 Requires:
   lib/core
   lib/distort
   lib/space
 
+Uniforms:
+uniform mat4 shadowModelView;
+uniform mat4 shadowProjection;
+  
 */
 
 // TODO: Better Shadow mapping
@@ -35,6 +35,10 @@ Overall better shadow technique for HQ performant shadows
 // Engine Parameters
 const int shadowMapResolution = 1024;
 const int noiseTextureResolution = 128;
+
+uniform sampler2D shadowtex0;   // shadow attenuation
+uniform sampler2D shadowtex1;   // shadow (no transparents)
+uniform sampler2D shadowcolor0; // shadow colors
 
 struct Shadow {
     vec3 color;

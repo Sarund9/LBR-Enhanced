@@ -1,35 +1,75 @@
+/*
 
+Water Surface
 
+Requires:
+lib/space
+lib/surface
 
+Uniforms:
+uniform vec3 upPosition;
 
+*/
 
-struct Water {
-    float d;
-};
+// TODO: Compute a water object instead of a Surface
+// TODO: Send pure light values instead of the scene color
 
-void computeWaterFog(float sceneDepth) {
-
-
-    // Get the screen UV
-    vec2 viewUV = gl_FragCoord.xy / vec2(viewWidth, viewHeight);
-
-    vec4 sceneColor = texture2D(colortex7, viewUV);
-    float sceneDepth = texture2D(depthtex1, viewUV).r;
-
+float waterFog(
+    float sceneDepth,       // Raw scene depth behind water surface
+    vec4 scenePositionRWS,  // Raw scene position in Relative World Space
+    vec3 surfacePositionRWS // Raw surface position in Relative World Space
+) {
     // Find the true distance to the scene pixel
-    vec4 scenePositionRWS = relativeWorldSpacePixel(viewUV, sceneDepth);
     float trueDepth = length(scenePositionRWS.xyz);
-    // Find the distance to the 
-    float trueDistance = length(posRWS);
-
+    // Find the distance to the water surface
+    float trueDistance = length(surfacePositionRWS);
+    
     // Distance by which a ray of light must travel to get from the underwater surface to the Eye
     float diffusionDistance = trueDepth - trueDistance;
-
+    
     // Adjust this value to create a mask
     const float DarkViewDistance = 20.0;
     const float LightViewDistance = 64.0;
     const float MinOpacity = 0.5;
+    
+    // TODO: Make incoming light from BRDF reduced by this
+    // float viewDistance; {
+    //     float hdrl = luma(sceneColor.rgb);
+    //     float lightl = sceneColor.a;
+    //     float lightmask = smoothstep(.5, 3.0, lightl);
+    //     float factor = lightmask * pow(hdrl, 1.0 / 2.0);
+    //     viewDistance = mix(DarkViewDistance, LightViewDistance, factor);
+    //     // debug(factor);
+    // }
+    
+    float distanceFactor = smoothstep(0, DarkViewDistance, diffusionDistance);
+    
+    float opacity = mix(MinOpacity, 1, pow(distanceFactor, 1.2));
+    
+    return opacity;
+}
 
+void computeWaterSurface(
+    inout Surface surface,
+    vec4 sceneColor,        // Raw HDR Color
+    float sceneDepth,       // Raw scene depth behind water surface
+    vec4 scenePositionRWS,  // Raw scene position in Relative World Space
+    vec3 surfacePositionRWS // Raw surface position in Relative World Space
+) {
+    
+    // Find the true distance to the scene pixel
+    float trueDepth = length(scenePositionRWS.xyz);
+    // Find the distance to the water surface
+    float trueDistance = length(surfacePositionRWS);
+    
+    // Distance by which a ray of light must travel to get from the underwater surface to the Eye
+    float diffusionDistance = trueDepth - trueDistance;
+    
+    // Adjust this value to create a mask
+    const float DarkViewDistance = 20.0;
+    const float LightViewDistance = 64.0;
+    const float MinOpacity = 0.5;
+    
     // TODO: Take into account the ammount of light in this fragment
     // This can be assumed to be the HDR channel value itself
     // This will become more noticeable with Emmision
@@ -41,11 +81,11 @@ void computeWaterFog(float sceneDepth) {
         viewDistance = mix(DarkViewDistance, LightViewDistance, factor);
         // debug(factor);
     }
-
+    
     float distanceFactor = smoothstep(0, viewDistance, diffusionDistance);
     
     float opacity = mix(MinOpacity, 1, pow(distanceFactor, 1.2));
-
+    
     // TODO: Water surface plane from underneath
     // TODO: Defferred water (and water entity ID)
     /*
@@ -58,29 +98,24 @@ void computeWaterFog(float sceneDepth) {
     
     TODO After:
     * Water Normals
-        Vanilla water texture not used
-        Rather, a normal map is used that results in a vanilla-like result
-        This normal should be procedural and animated
-        NOTE: Water does not have a normal texture by default
+    Vanilla water texture not used
+    Rather, a normal map is used that results in a vanilla-like result
+    This normal should be procedural and animated
+    NOTE: Water does not have a normal texture by default
     * Waves
     * Water Edges
-
-
+    
+    
     Future: Volumetric Lights (under the water)
     */
-
+    
     // TODO: Separate water vs translucent shaders
-
-    // finalColor = mix(sceneColor.rgb, albedo.rgb, albedo.a);
-    finalColor = mix(sceneColor.rgb, color.rgb, opacity);
-    finalColor *= albedo.rgb;
-
-    finalColor = mix(finalColor.rgb, _debug_value.rgb, _debug_value.a);
-
-    // gl_FragData[1] = vec4(normal * 0.5 + 0.5, 1.0);
-    // gl_FragData[2] = vec4(lightUV, 0, 1);
-    // gl_FragData[3] = vec4(0, 0, 0, 0); // R M T E
+    
+    surface.color=vec3(.1608,.0667,.7647);
+    surface.alpha=opacity*.5;
+    surface.normal=upPosition;
+    surface.metallic=0;
+    surface.smoothness=1;
+    // surface.viewDirection =
 }
-
-
 

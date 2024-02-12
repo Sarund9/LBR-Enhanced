@@ -25,17 +25,7 @@ void main() {
 
 #ifdef __PIXEL__
 
-// Color we wrote to
-uniform sampler2D colortex0; // albedo
-uniform sampler2D colortex1; // normal
-uniform sampler2D colortex2; // lightmap
-uniform sampler2D colortex3; // specular
-
-uniform sampler2D depthtex0; // Scene Depth
-
-uniform sampler2D shadowtex0;   // shadow attenuation
-uniform sampler2D shadowtex1;   // shadow (no transparents)
-uniform sampler2D shadowcolor0; // shadow colors
+const float sunPathRotation = -9.0; // TODO: Settings
 
 uniform sampler2D noisetex; // Utility noise texture
 
@@ -45,12 +35,9 @@ uniform mat4 gbufferModelView;
 uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
 
-const float sunPathRotation = -9.0;
-
 uniform float aspectRatio;
 uniform vec3 cameraPosition;
 
-// 
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth; // Used for eye adaptation
 uniform vec3 sunPosition;
@@ -64,10 +51,19 @@ uniform vec3 skyColor;
 #include "/lib/light.glsl"
 #include "/lib/brdf.glsl"
 
+// UNIFORMS
+uniform sampler2D colortex0; // albedo
+uniform sampler2D colortex1; // normal
+uniform sampler2D colortex2; // lightmap
+uniform sampler2D colortex3; // detail
+
+uniform sampler2D depthtex0; // full scene depth
+
 void main() {
     vec4 sceneColor = texture2D(colortex0, TexCoords);
 
     float depth = texture2D(depthtex0, TexCoords).r;
+    // Skip the Skybox, write straigt to Scene Color
     if (depth == 1.0) {
         gl_FragData[0] = sceneColor;
         return;
@@ -84,22 +80,16 @@ void main() {
     // vec4 posVOXEL_RWS = posVOXEL - vec4(cameraPosition, 0);
     // vec4 posVOXEL_VS = gbufferModelView * posVOXEL_RWS;
 
-    Surface surface = getSurface(sceneColor, sceneNormal, sceneDetail, posVS);
+    Surface surface = newSurface(sceneColor, sceneNormal, sceneDetail, posVS);
 
-    float blocklight;
-    float skylight;
-    {
-        vec4 uvs = texture2D(colortex2, TexCoords);
-        blocklight = uvs.x;
-        skylight = uvs.y;
-    }
-    
+    vec4 sceneLight = texture2D(colortex2, TexCoords);
+
     Shadow shadow = incomingShadow(posRWS);
     
-    Light mainLight = incomingLight(surface, blocklight, skylight, shadow);
+    Light mainLight = incomingLight(surface.normal, sceneLight.xy, shadow);
     
     vec3 diffuse;
-    diffuse = BRDF(surface, mainLight);
+    diffuse = directBRDF(surface, mainLight);
 
     diffuse = mix(diffuse, _debug_value.rgb, _debug_value.a);
 

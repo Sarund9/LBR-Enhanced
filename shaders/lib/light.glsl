@@ -7,6 +7,11 @@ Used:
   gbuffer/translucent
 
 Uniforms:
+uniform int worldTime;
+uniform ivec2 eyeBrightnessSmooth;
+uniform vec3 sunPosition;
+uniform vec3 moonPosition;
+uniform vec3 skyColor;
 
 Required:
   lib/core
@@ -54,8 +59,10 @@ struct Light {
     float directional;
 };
 
-Light incomingLight(Surface surface, float blocklight, float skylight, Shadow shadow)
+Light incomingLight(vec3 surfaceNormal, vec2 sceneLight, Shadow shadow)
 {
+    float blocklight = sceneLight.x;
+    float skylight = sceneLight.y;
     // 0 to 1 is daytime
     // 1 to 2 is nighttime
     float time = worldTime / 12000.0;
@@ -127,8 +134,9 @@ Light incomingLight(Surface surface, float blocklight, float skylight, Shadow sh
     float block     = pow(blocklight, 3.2);   // (.1, 3)
     vec3  blockclr  = blocklightColor(0) * block * 1.1; // 0 is the Torch
     
-    float dots = dot(surface.normal, normalize(sunPosition));
-    float dotm = dot(surface.normal, normalize(moonPosition));
+    // TODO: Use Shadowlight Position
+    float dots = dot(surfaceNormal, normalize(sunPosition));
+    float dotm = dot(surfaceNormal, normalize(moonPosition));
 
     float smask = (shadow.clipAttenuation - shadow.solidAttenuation); // TODO: <- this may have bugs
     float inl  = max(dots, smask * .9) * sunFactor;

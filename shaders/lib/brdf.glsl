@@ -6,9 +6,7 @@ Used:
   program/deferred
   gbuffer/translucent
 
-Uniforms:
-
-Required:
+Requires:
   lib/core
     lib/space
     lib/distort
@@ -16,7 +14,11 @@ Required:
   lib/surface
   lib/light
 
+Uniforms:
+
 */
+
+
 
 float specularStrenght(Surface surface, Light light) {
     /*
@@ -72,10 +74,18 @@ float specularStrenght(Surface surface, Light light) {
 	// return r2 / (d2 * max(0.1, lh2) * normalization);
 }
 
-vec3 BRDF(Surface surface, Light light) {
+/*
+Given surface geometry, and incoming light.
+Calculate output light value
+
+*/
+vec3 directBRDF(Surface surface, Light light) {
     
     // Light that enters the material
     vec3 incomingLight = surface.color * light.color;
+
+    // The alpha affects the material
+    incomingLight *= surface.alpha;
 
     // Divide the light into diffused, and reflected
     vec3 diffuse; vec3 specular;
@@ -99,6 +109,11 @@ vec3 BRDF(Surface surface, Light light) {
     return direct;
 }
 
+// TODO: Translucent BRDF
+/*
+Surface color:
+- 
 
+*/
 
 

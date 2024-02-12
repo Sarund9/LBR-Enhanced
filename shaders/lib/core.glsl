@@ -8,7 +8,20 @@ colortex0: color
 colortex1: normal
 depthtex0: shadows
 
+IDS:
+
+Base ID is 1000
+
+Water: 5
+
+
 */
+
+const int BaseID = 1000;
+
+const int ID_Water          = BaseID + 5;
+
+
 
 const float PI = 3.14159265359;
 
@@ -111,6 +124,12 @@ float avg(vec3 vec) {
     return (vec.x + vec.y + vec.z) / 3;
 }
 
+float luma(vec3 color) {
+    // Algorithm from Chapter 16 of OpenGL Shading Language
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    return dot(color, W);
+}
+
 // Polynomial smooth min
 float psmin(float a, float b, float k) {
     float h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
@@ -190,9 +209,7 @@ vec3 shade(vec3 color) {
 }
 
 vec3 resaturate(vec3 rgb, float adjustment) {
-    // Algorithm from Chapter 16 of OpenGL Shading Language
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    vec3 intensity = vec3(dot(rgb, W));
+    vec3 intensity = vec3(luma(rgb));
     return mix(intensity, rgb, adjustment);
 }
 

@@ -161,6 +161,27 @@ struct Surface {
     float smoothness;
 };
 
+Surface getSurface(vec4 sceneColor, vec3 viewPosition) {
+    Surface surface;
+
+    surface.color = tolinear(sceneColor.rgb);
+    surface.alpha = sceneColor.a;
+
+    vec4 specData = texture2D(colortex3, TexCoords);
+
+    surface.smoothness = specData.r;
+    surface.metallic = specData.g;
+    // TODO: Subsurface/Porosity/
+    // TODO: Emmision
+    
+    surface.viewDirection = -viewPosition;
+
+
+    surface.normal = normalize(texture2D(colortex1, TexCoords).rgb * 2.0f - 1.0f);
+
+    return surface;
+}
+
 // LIGHT PARAMETERS
 const float LightK = 3;
 const vec3 AmbientLight = vec3(.001);
@@ -391,44 +412,22 @@ vec3 BRDF(Surface surface, Light light) {
 }
 
 void main() {
-    Surface surface;
-    {
-        vec4 s = texture2D(colortex0, TexCoords);
-        surface.color = s.rgb;
-        surface.alpha = s.a;
-
-        // debug(s.rgb);
-    }
-
-    // debug(texture2D(shadowcolor0, TexCoords).rgb);
+    vec4 sceneColor = texture2D(colortex0, TexCoords);
 
     float depth = texture2D(depthtex0, TexCoords).r;
-    if (depth == 1.0f) {
-        gl_FragData[0] = vec4(surface.color + vec3(1), surface.alpha);
+    if (depth == 1.0) {
+        gl_FragData[0] = sceneColor;
         return;
     }
 
+    // debug(depth);
+
+    vec3 posVS = viewSpacePixel(TexCoords, depth);
     vec4 posRWS = relativeWorldSpacePixel(TexCoords, depth);
     vec4 posWS = vec4(cameraPosition, 0) + posRWS;
 
-    surface.color = tolinear(surface.color);
 
-    float water;
-    {
-        vec4 sample = texture2D(colortex1, TexCoords);
-        surface.normal = normalize(sample.rgb * 2.0f - 1.0f);
-        water = 1 - sample.a; // 0 is water
-    }
-
-    vec4 specData = texture2D(colortex3, TexCoords);
-
-    surface.smoothness = specData.r;
-    surface.metallic = specData.g;
-    // TODO: Subsurface/Porosity/
-    // TODO: Emmision
-    
-    vec3 viewPosition = viewSpacePixel(TexCoords, depth);
-    surface.viewDirection = -viewSpacePixel(TexCoords, depth);
+    Surface surface = getSurface(sceneColor, posVS);
 
     float blocklight;
     float skylight;
@@ -438,22 +437,19 @@ void main() {
         skylight = uvs.y;
     }
     
-    vec3 diffuse;
-    
     Shadow shadow = incomingShadow(posRWS);
     
     // debug(shadow.color);
 
     Light mainLight = incomingLight(surface, blocklight, skylight, shadow);
     
+    vec3 diffuse;
     diffuse = BRDF(surface, mainLight);
-
-    diffuse = togamma(diffuse); // convert to gamma space
 
     diffuse = mix(diffuse, _debug_value.rgb, _debug_value.a);
 
  /* DRAWBUFFERS:7 */
-    gl_FragData[0] = vec4(diffuse + vec3(1), 1);
+    gl_FragData[0] = vec4(diffuse, luma(mainLight.color));
 }
 
 #endif

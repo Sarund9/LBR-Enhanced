@@ -2,4 +2,4 @@
 
 #define __PIXEL__
 
-#include "/gbuffer/water.glsl"
+#include "/gbuffer/translucent.glsl"

@@ -2,4 +2,4 @@
 
 #define __VERTEX__
 
-#include "/gbuffer/water.glsl"
+#include "/gbuffer/translucent.glsl"

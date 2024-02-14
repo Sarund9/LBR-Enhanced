@@ -40,6 +40,8 @@ uniform sampler2D shadowtex0;   // shadow attenuation
 uniform sampler2D shadowtex1;   // shadow (no transparents)
 uniform sampler2D shadowcolor0; // shadow colors
 
+const float sunPathRotation = -9.0; // TODO: Settings
+
 struct Shadow {
     vec3 color;
     float brightness;        // How bright is the sun
@@ -71,6 +73,9 @@ Shadow incomingShadow(vec4 posWS) {
     shadow.brightness       = col.a;
     shadow.solidAttenuation = visibility(shadowtex0, coords);
     shadow.clipAttenuation  = visibility(shadowtex1, coords);
+
+    // debug(shadow.brightness);
+
     return shadow;
 }
 

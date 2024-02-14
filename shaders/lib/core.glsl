@@ -86,6 +86,18 @@ float square(float v) {
     return v * v;
 }
 
+vec2 square(vec2 v) {
+    return v * v;
+}
+
+vec3 square(vec3 v) {
+    return v * v;
+}
+
+vec4 square(vec4 v) {
+    return v * v;
+}
+
 float clamp01(float v) {
     return clamp(v, 0, 1);
 }
@@ -116,6 +128,12 @@ vec3 mixstep(vec3 value, float xMin, float xMax, float yMin, float yMax) {
 
 float mixstep(float value, float xMin, float xMax, float yMin, float yMax) {
     return mix(yMin, yMax, linearstep(value, xMin, xMax));
+}
+
+float smoothmask(float value, float a, float b, float k) {
+    float L = smoothstep(a-k, a+k, value);
+    float H = smoothstep(b+k, b-k, value);
+    return min(L, H);
 }
 
 float avg(vec3 vec) {

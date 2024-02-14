@@ -55,6 +55,7 @@ uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
 uniform vec3 sunPosition;
 uniform vec3 moonPosition;
+uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
 #include "/lib/space.glsl"
@@ -87,7 +88,6 @@ void main() {
     vec2 viewUV = gl_FragCoord.xy / vec2(viewWidth, viewHeight);
 
     vec4 sceneColor = texture2D(colortex7, viewUV);
-
     float sceneDepth = texture2D(depthtex1, viewUV).r;
 
     vec3 posVS = (gbufferModelView * vec4(posRWS, 1)).xyz;
@@ -98,45 +98,24 @@ void main() {
     vec4 albedo = texture2D(texture, texUV) * color;
     vec4 specularData = texture2D(specular, texUV);
 
-    Surface surface = newSurface(albedo, vec4(normal, 0), specularData, posVS);
-    // TODO: Generalized normal blending
-    // More intuitive alpha values
-    {
-        float F = 1 - surface.alpha;
-        F = pow(F, 4);
-        surface.alpha = 1 - F;
+    // Surface surface = newSurface(albedo, vec4(normal, 0), specularData, posVS);
+    Surface surface; {
+        surface.color = albedo.rgb;
+        surface.alpha = albedo.a;
+        surface.normal = normal;
+        surface.smoothness = specularData.r;
+        surface.metallic = specularData.g;
+        surface.viewDirection = -posVS;
     }
+    Shadow shadow = incomingShadow(vec4(posRWS, 1));
+    Light light = surfaceLight(surface, lightUV, shadow);
     
+    vec3 surfBRDF = directBRDF(surface, light);
+    fragColor.rgb = surfBRDF;
+    fragColor.a = albedo.a;
 
-    Shadow surfaceShadow = incomingShadow(vec4(posRWS, 1));
-    Light surfaceLight = incomingLight(normal, lightUV, surfaceShadow);
+    // debug(posVS.z + 1);
 
-    vec3 surfBRDF = directBRDF(surface, surfaceLight);
-    fragColor.rgb = sceneColor.rgb * surface.alpha + surfBRDF;
-    fragColor.a = surface.alpha;
-
-    // if (watermask > 0.5)
-    // {
-    //     // Water
-    //     float fog = waterFog(sceneDepth, scenePosRWS, posRWS);
-    //     vec3 fogclr = surface.color;
-    //     fragColor.rgb = mix(sceneColor.rgb, fogclr, fog) + surfBRDF;
-    //     fragColor.a = 1; // custom blending
-    //     // TODO: Get the Backface of water, to better calculate depth
-    //     // Could be done by using separate terrain_opaque and terrain_cutout
-    //     // Better: deffer translucent blending, but not the BRDF sample
-    //     // 
-    // }
-    // else
-    // {
-    //     float blend = pow(surface.alpha, .7);
-    //     // debug(blend);
-    //     fragColor.rgb = sceneColor.rgb * surface.alpha;
-    //     // fragColor.rgb += directBRDF(surface, surfaceLight);
-    //     fragColor.rgb = mix(sceneColor.rgb, surfBRDF, blend);
-    //     fragColor.a = 1; // custom blending
-    // }
-    
     fragColor.rgb = mix(fragColor.rgb, _debug_value.rgb, _debug_value.a);
     fragColor.a = max(fragColor.a, _debug_value.a);
     

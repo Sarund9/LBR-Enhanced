@@ -29,7 +29,7 @@ struct Surface {
 
 Surface newSurface(
     vec4 sceneColor,    // Raw sampled color from the Scene
-    vec4 sceneNormal,   // Raw sampled normal from the Scene
+    vec4 sceneNormal,   // Uncompressed normals
     vec4 sceneDetail,   // Raw sampled 'specular' from the Scene
     vec3 viewPosition   // View-Space position of Surface
 ) {

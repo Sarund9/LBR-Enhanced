@@ -9,8 +9,7 @@ Used:
 Uniforms:
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
-uniform vec3 sunPosition;
-uniform vec3 moonPosition;
+uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
 Required:
@@ -59,7 +58,7 @@ struct Light {
     float directional;
 };
 
-Light incomingLight(vec3 surfaceNormal, vec2 sceneLight, Shadow shadow)
+Light incomingLight(Surface surface, vec2 sceneLight, Shadow shadow)
 {
     float blocklight = sceneLight.x;
     float skylight = sceneLight.y;
@@ -135,8 +134,8 @@ Light incomingLight(vec3 surfaceNormal, vec2 sceneLight, Shadow shadow)
     vec3  blockclr  = blocklightColor(0) * block * 1.1; // 0 is the Torch
     
     // TODO: Use Shadowlight Position
-    float dots = dot(surfaceNormal, normalize(sunPosition));
-    float dotm = dot(surfaceNormal, normalize(moonPosition));
+    float dots = dot(surface.normal, normalize(sunPosition));
+    float dotm = dot(surface.normal, normalize(moonPosition));
 
     float smask = (shadow.clipAttenuation - shadow.solidAttenuation); // TODO: <- this may have bugs
     float inl  = max(dots, smask * .9) * sunFactor;
@@ -186,6 +185,138 @@ Light incomingLight(vec3 surfaceNormal, vec2 sceneLight, Shadow shadow)
     
     // TODO: Tonemapping outside this function
     
+    
+    return light;
+}
+
+Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
+{
+    /* Day/Night in Ticks
+       0 to 13k is day
+       13k to 23k is night */
+    float time = float(worldTime);
+
+    const float TK = 1000.0;
+
+    float day = smoothmask(time, 0, 12250, 750);
+    float night = 1 - day;
+
+    /* skylight
+    11500: Starts to diminish
+    12500: Reduced to 55%, Dusk Colored Begins
+    13000: Official Night Time, Dusk Color is Max
+    13500: Dusk Color is Halved
+    14000: No Light
+    */
+    vec4 skylight; {
+        float light = pow(sceneLight.y, 2.5);
+
+        skylight.a = light;
+
+        // TODO: This affects sunlight
+        float dusk; {
+            float start = smoothstep(12200, 12900, time);
+            float end   = smoothstep(13500, 13000, time);
+            dusk = min(start, end);
+        }
+
+        vec3 color = mix(skyColor, SkyColorNight, night);
+
+        skylight.rgb = color * light;
+    }
+    
+    /* blocklight:
+    */
+    vec4 blocklight; {
+        blocklight.a = pow(sceneLight.x, 3.2);
+        blocklight.rgb = blocklightColor(0) * blocklight.a * 1.2;
+    }
+
+    /* sunlight:
+
+    At tick 12789: shadows start coming from the moon
+        Can this time be changed ??
+
+    */
+    vec4 sunlight; {
+        // Directional Dot Product
+        float dotl = dot(surface.normal, normalize(shadowLightPosition) + vec3(1e-4));
+        
+        // Is light directly hitting this surface
+        float direct = mix(1, max(dotl, 0), surface.alpha);
+        // Translucent surfaces have the light pass through
+        // direct += max(-dotl, 0) * (1 - surface.alpha);
+        
+        float solidOclussion = shadow.clipAttenuation * shadow.brightness;
+        // Is this surface ocluded by shadows
+        float oclussion = mix(shadow.clipAttenuation, solidOclussion, surface.alpha > .95)
+            * max(dotl, 0);
+
+        // Is this surface covered by shadows
+        float attenuation = oclussion * direct;
+        // attenuation = mix(attenuation, attenuation, 1);
+
+        // 1 when shadow color is transmitted
+        float solidMask = (shadow.clipAttenuation - shadow.solidAttenuation);
+        // 1 when tra
+        // float translucentMask = mix(surface.alpha, 0, direct);
+        float translucentMask = smoothstep(-.1, .1, -dotl);
+
+        // What color to use. 1 when shadow transmits it's color
+        float colormask = mix(
+            solidMask,
+            translucentMask,
+            // surface.alpha < 1
+            smoothstep(1, .95, surface.alpha)
+            );
+        
+        // Color 
+        vec3 transmittedColor = mix(surface.color, shadow.color, surface.alpha > .95);
+
+        transmittedColor = resaturate(transmittedColor, 1.5);
+
+        vec3 light = mix(SunColor, transmittedColor, colormask);
+        
+        sunlight.rgb = light * attenuation;
+        sunlight.a = attenuation;
+    }
+
+    vec4 environment; {
+        float mask = square(skylight.a) * .7;
+        mask = clamp01(mask);
+        
+        vec4 skyedit; vec4 sunedit; {
+            // TODO: Moon phases
+            float skymul = .2;
+            float moonmul = .05;
+            skyedit = mix(skylight, skylight * skymul, night);
+            sunedit = mix(sunlight, sunlight * moonmul, night);
+        }
+
+        environment = mix(skyedit, sunedit, mask);
+
+        // debug(mask);
+    }
+    
+    
+    vec3 outDoor; {
+        outDoor += environment.rgb;
+        // outDoor += sunlight.rgb;
+
+        outDoor += blocklight.rgb;
+    }
+    
+    vec3 innDoor; {
+
+    }
+
+    // debugldr(luma(sunlight.rgb));
+
+    Light light;
+
+    light.color = outDoor;
+    light.direction = vec3(0, 0, 0);
+    light.directional = 0;
     
     return light;
 }

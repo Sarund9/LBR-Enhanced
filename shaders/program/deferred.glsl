@@ -25,8 +25,6 @@ void main() {
 
 #ifdef __PIXEL__
 
-const float sunPathRotation = -9.0; // TODO: Settings
-
 uniform sampler2D noisetex; // Utility noise texture
 
 uniform mat4 gbufferProjectionInverse;
@@ -42,6 +40,7 @@ uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth; // Used for eye adaptation
 uniform vec3 sunPosition;
 uniform vec3 moonPosition;
+uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
 #include "/lib/space.glsl"
@@ -80,14 +79,28 @@ void main() {
     // vec4 posVOXEL_RWS = posVOXEL - vec4(cameraPosition, 0);
     // vec4 posVOXEL_VS = gbufferModelView * posVOXEL_RWS;
 
-    Surface surface = newSurface(sceneColor, sceneNormal, sceneDetail, posVS);
+    // Surface surface = newSurface(sceneColor, sceneNormal, sceneDetail, posVS);
+    Surface surface; {
+        surface.color = tolinear(sceneColor.rgb);
+        surface.alpha = sceneColor.a;
+        surface.normal = normalize(sceneNormal.rgb * 2.0f - 1.0f); // TODO: Normal Compression
+
+        surface.smoothness = sceneDetail.r;
+        surface.metallic = sceneDetail.g;
+        // TODO: Subsurface/Porosity/
+        // TODO: Emmision
+        
+        surface.viewDirection = -posVS;
+    }
 
     vec4 sceneLight = texture2D(colortex2, TexCoords);
 
     Shadow shadow = incomingShadow(posRWS);
     
-    Light mainLight = incomingLight(surface.normal, sceneLight.xy, shadow);
+    Light mainLight = surfaceLight(surface, sceneLight.xy, shadow);
     
+    // debug(((posVS.z) + 1));
+
     vec3 diffuse;
     diffuse = directBRDF(surface, mainLight);
 

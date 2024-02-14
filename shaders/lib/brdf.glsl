@@ -84,9 +84,6 @@ vec3 directBRDF(Surface surface, Light light) {
     // Light that enters the material
     vec3 incomingLight = surface.color * light.color;
 
-    // The alpha affects the material
-    incomingLight *= surface.alpha;
-
     // Divide the light into diffused, and reflected
     vec3 diffuse; vec3 specular;
     {

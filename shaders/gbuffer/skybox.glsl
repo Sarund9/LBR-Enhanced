@@ -21,6 +21,9 @@ uniform mat4 gbufferModelView;
 uniform mat4 gbufferProjectionInverse;
 uniform vec3 fogColor;
 uniform vec3 skyColor;
+uniform int worldTime;
+
+#include "/lib/core.glsl"
 
 float fogify(float x, float w) {
 	return w / (x * x + w);

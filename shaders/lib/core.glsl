@@ -158,6 +158,12 @@ vec3 psmin(vec3 a, vec3 b, float k) {
     return mix(a, b, h) - k*h*(1.0-h);
 }
 
+// Polynomial smooth min
+vec4 psmin(vec4 a, vec4 b, float k) {
+    vec4 h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
+    return mix(a, b, h) - k*h*(1.0-h);
+}
+
 /*
 Logic Step Interpolation
 k = 0 returns the average

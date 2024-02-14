@@ -38,8 +38,6 @@ uniform vec3 cameraPosition;
 
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth; // Used for eye adaptation
-uniform vec3 sunPosition;
-uniform vec3 moonPosition;
 uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
@@ -64,7 +62,7 @@ void main() {
     float depth = texture2D(depthtex0, TexCoords).r;
     // Skip the Skybox, write straigt to Scene Color
     if (depth == 1.0) {
-        gl_FragData[0] = sceneColor;
+        gl_FragData[0] = vec4(tolinear(sceneColor.rgb), luma(sceneColor.rgb));
         return;
     }
 

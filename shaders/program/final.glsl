@@ -30,11 +30,11 @@ uniform float viewHeight;
 void main() {
     vec3 color = texture2D(colortex7, TexCoords).rgb;
 
-    color = togamma(color); // convert to gamma space
-    
-    
+    vec3 K = vec3(luma(color));
+    color = mix(K, color, 1.1);
+    color += K * .05;
 
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(togamma(color), 1.0);
 }
 
 #endif

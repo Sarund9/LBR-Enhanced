@@ -33,7 +33,7 @@ Overall better shadow technique for HQ performant shadows
 // const int TotalSamples = ShadowSamplesPerSize * ShadowSamplesPerSize;
 
 // Engine Parameters
-const int shadowMapResolution = 1024;
+const int shadowMapResolution = 2048;
 const int noiseTextureResolution = 128;
 
 uniform sampler2D shadowtex0;   // shadow attenuation

@@ -53,8 +53,6 @@ uniform vec3 upPosition;
 // Light
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
-uniform vec3 sunPosition;
-uniform vec3 moonPosition;
 uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
@@ -98,7 +96,12 @@ void main() {
     vec4 albedo = texture2D(texture, texUV) * color;
     vec4 specularData = texture2D(specular, texUV);
 
-    // Surface surface = newSurface(albedo, vec4(normal, 0), specularData, posVS);
+    // TODO: Water Backface
+    if (watermask > .5)
+    {
+        
+    }
+
     Surface surface; {
         surface.color = albedo.rgb;
         surface.alpha = albedo.a;
@@ -112,9 +115,33 @@ void main() {
     
     vec3 surfBRDF = directBRDF(surface, light);
     fragColor.rgb = surfBRDF;
-    fragColor.a = albedo.a;
+    fragColor.a = surface.alpha;
 
-    // debug(posVS.z + 1);
+    if (watermask > .5)
+    {
+        float trueDepth = length(scenePosRWS.xyz);
+        float trueDistance = length(posRWS);
+        
+        float diffusionDistance = (trueDepth - trueDistance);
+
+        float diffusion = diffusionDistance / 24.0;
+
+        float opacity = mix(surface.alpha, 1, diffusion);
+
+        // fragColor.rgb *= (surface.color / luma(surface.color)) * (2 - opacity);
+        fragColor.a = clamp01(opacity);
+
+        // debugldr(opacity);
+    }
+    /*
+    DESIRED:
+      C: FragColor S: SceneColor W: Water Color
+    D = 
+    
+    ALPHA BLEND
+    D = C.rgb * C.a
+
+    */
 
     fragColor.rgb = mix(fragColor.rgb, _debug_value.rgb, _debug_value.a);
     fragColor.a = max(fragColor.a, _debug_value.a);

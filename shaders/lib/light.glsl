@@ -149,6 +149,7 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         sunlight.rgb = light * attenuation;
         sunlight.a = attenuation;
     }
+    // debug(sunlight.rgb);
 
     // Apply night-time
     vec4 skylight2; vec4 sunlight2; {

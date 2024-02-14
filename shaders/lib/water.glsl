@@ -15,14 +15,13 @@ uniform vec3 upPosition;
 // TODO: Send pure light values instead of the scene color
 
 float waterFog(
-    float sceneDepth,       // Raw scene depth behind water surface
-    vec4 scenePositionRWS,  // Raw scene position in Relative World Space
-    vec3 surfacePositionRWS // Raw surface position in Relative World Space
+    float trueDepth,
+    float trueDistance
 ) {
     // Find the true distance to the scene pixel
-    float trueDepth = length(scenePositionRWS.xyz);
+    // float trueDepth = length(scenePositionRWS.xyz);
     // Find the distance to the water surface
-    float trueDistance = length(surfacePositionRWS);
+    // float trueDistance = length(surfacePositionRWS);
     
     // Distance by which a ray of light must travel to get from the underwater surface to the Eye
     float diffusionDistance = trueDepth - trueDistance;

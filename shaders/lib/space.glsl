@@ -2,9 +2,6 @@
 
 Spatial Maniuplation
 
-Requires:
-  lib/shadow
-
 Uniforms:
 
 uniform mat4 gbufferProjectionInverse;

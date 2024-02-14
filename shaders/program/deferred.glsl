@@ -27,6 +27,9 @@ void main() {
 
 uniform sampler2D noisetex; // Utility noise texture
 
+uniform float viewWidth;
+uniform float viewHeight;
+
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 gbufferModelView;
@@ -53,6 +56,7 @@ uniform sampler2D colortex0; // albedo
 uniform sampler2D colortex1; // normal
 uniform sampler2D colortex2; // lightmap
 uniform sampler2D colortex3; // detail
+uniform sampler2D colortex4; // aliasing
 
 uniform sampler2D depthtex0; // full scene depth
 
@@ -71,13 +75,17 @@ void main() {
 
     vec3 posVS = viewSpacePixel(TexCoords, depth);
     vec4 posRWS = relativeWorldSpacePixel(TexCoords, depth);
-    // vec4 posWS = vec4(cameraPosition, 0) + posRWS;
+    
 
-    // vec4 posVOXEL = voxelPerfect(posWS + vec4(.0001), 16);
-    // vec4 posVOXEL_RWS = posVOXEL - vec4(cameraPosition, 0);
-    // vec4 posVOXEL_VS = gbufferModelView * posVOXEL_RWS;
+    {
+        vec4 edges = texture2D(colortex4, TexCoords);
 
-    // Surface surface = newSurface(sceneColor, sceneNormal, sceneDetail, posVS);
+        vec2 uv = TexCoords + edges.xy / vec2(viewWidth, viewHeight);
+
+        vec3 supersample = texture2D(colortex0, uv).rgb;
+        
+    }
+
     Surface surface; {
         surface.color = tolinear(sceneColor.rgb);
         surface.alpha = sceneColor.a;
@@ -97,8 +105,7 @@ void main() {
     
     Light mainLight = surfaceLight(surface, sceneLight.xy, shadow);
     
-    // debug(((posVS.z) + 1));
-
+    
     vec3 diffuse;
     diffuse = directBRDF(surface, mainLight);
 

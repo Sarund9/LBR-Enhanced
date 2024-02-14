@@ -102,6 +102,10 @@ float clamp01(float v) {
     return clamp(v, 0, 1);
 }
 
+vec2 clamp01(vec2 v) {
+    return clamp(v, 0, 1);
+}
+
 vec3 clamp01(vec3 v) {
     return clamp(v, 0, 1);
 }
@@ -136,8 +140,12 @@ float smoothmask(float value, float a, float b, float k) {
     return min(L, H);
 }
 
+float avg(vec2 vec) {
+    return (vec.x + vec.y) / 2.0;
+}
+
 float avg(vec3 vec) {
-    return (vec.x + vec.y + vec.z) / 3;
+    return (vec.x + vec.y + vec.z) / 3.0;
 }
 
 float luma(vec3 color) {
@@ -315,6 +323,14 @@ vec3 getGradient(vec4 c1, vec4 c2, vec4 c3, vec4 c4, float value_) {
 	col = oklab_mix(col, c4.rgb, blend3);
 	
 	return col;
+}
+
+vec2 voxelPerfect(vec2 value, float voxelSize) {
+    // const float BlockTextureSize = 16.0; // TODO: Texture Size Menu Option
+    vec2 pix = value * voxelSize;
+    pix = floor(pix);
+    pix += vec2(.5);
+    return pix / voxelSize;
 }
 
 vec4 voxelPerfect(vec4 value, float voxelSize) {

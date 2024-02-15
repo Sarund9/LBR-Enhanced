@@ -44,11 +44,13 @@ uniform ivec2 eyeBrightnessSmooth; // Used for eye adaptation
 uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
+#include "/lib/color.glsl"
 #include "/lib/space.glsl"
 #include "/lib/distort.glsl"
 #include "/lib/shadow.glsl"
 #include "/lib/surface.glsl"
 #include "/lib/light.glsl"
+
 #include "/lib/brdf.glsl"
 
 // UNIFORMS

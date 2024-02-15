@@ -112,45 +112,46 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         float dotl = dot(surface.normal, normalize(shadowLightPosition) + vec3(1e-4));
         
         // Is light directly hitting this surface
-        float direct = mix(1, max(dotl, 0), surface.alpha);
+        float direct = max(dotl, 0); //mix(1, max(dotl, 0), surface.alpha);
         // Translucent surfaces have the light pass through
         // direct += max(-dotl, 0) * (1 - surface.alpha);
         
         float solidOclussion = shadow.clipAttenuation * shadow.brightness;
         // Is this surface ocluded by shadows
-        float oclussion = mix(shadow.clipAttenuation, solidOclussion, surface.alpha > .95)
-            * max(dotl, 0);
+        float oclussion = mix(shadow.clipAttenuation, solidOclussion * max(dotl, 0), surface.alpha > .95);
 
         // Is this surface covered by shadows
-        float attenuation = oclussion * pow(direct, .25);
-        // attenuation = mix(attenuation, attenuation, 1);
+        float attenuation = mix(oclussion * surface.alpha, oclussion * pow(direct, .25), surface.alpha);
+        
+        float translucentShadows = smoothstep(1, .95, surface.alpha);
 
-        // float bad = float(abs(dotl) < .01);
-        // debug(attenuation);
-        // debug(attenuation);
-
-        // 1 when shadow color is transmitted
-        float solidMask = (shadow.clipAttenuation - shadow.solidAttenuation);
-        // 1 when tra
-        // float translucentMask = mix(surface.alpha, 0, direct);
-        float translucentMask = smoothstep(-.1, .1, -dotl);
-
-        // What color to use. 1 when shadow transmits it's color
-        float colormask = mix(
-            solidMask,
-            translucentMask,
+        // What color to use. 1 when shadow transmits it's color, 0 when the sun color is used
+        float solidColorMask = mix(
+            (shadow.clipAttenuation - shadow.solidAttenuation),
+            smoothstep(-.1, .1, -dotl),
             // surface.alpha < 1
-            smoothstep(1, .95, surface.alpha)
+            translucentShadows
             );
+        /* This uglyness used to (Incorrectly) blend 2 different masks to blend colors between translucents and opaques.
+        This is incorrect because the mask is only capable of blending between the Sun color and the shadow color, where self-shadowed translucents should use their own surface color as the correct shadow color.
+        I kept it because due to an error in mimapping, which results in far-off alpha cutout objects keeping the color of their shadows.
+        This simply looks nicer, it seems to result in AO for a-clipped terrain */
         
-        // Color 
-        vec3 transmittedColor = mix(surface.color, shadow.color, surface.alpha > .95);
+        // Color of Shadows
+        // vec3 transmittedColor = mix(surface.color, shadow.color, surface.alpha > .95);
+        vec3 transmittedColor = resaturate(shadow.color, 1.5); // Aesthetic Saturation
 
-        transmittedColor = resaturate(transmittedColor, 1.5);
+        vec3 solidLight = mix(SunColor, transmittedColor, solidColorMask);
 
-        vec3 light = mix(SunColor, transmittedColor, colormask);
-        
-        sunlight.rgb = light * attenuation;
+        // Color of self shadowed translucent surfaces
+        vec3 translucentColor = mix(
+            mix(SunColor, surface.color, surface.alpha),
+            SunColor * smoothstep(0, .6, surface.alpha),
+        direct * 0.6 + 0.1);
+
+        vec3 shadedColor = mix(solidLight, translucentColor, translucentShadows);
+
+        sunlight.rgb = shadedColor * attenuation;
         sunlight.a = attenuation;
     }
 

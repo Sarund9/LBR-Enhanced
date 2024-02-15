@@ -20,6 +20,7 @@ Water: 5
 const int BaseID = 10000;
 
 const int ID_Water = 3;
+const int ID_Foliage = 10;
 
 
 
@@ -96,6 +97,12 @@ vec3 square(vec3 v) {
 
 vec4 square(vec4 v) {
     return v * v;
+}
+
+vec3 snormalize(vec3 val) {
+    if (val.x == 0 && val.y == 0 && val.z == 0) { return vec3(0); }
+
+    return normalize(val);
 }
 
 float clamp01(float v) {
@@ -219,10 +226,10 @@ float stepmask(float value, float a, float b, float k) {
 
     */
 
-    float extended = stepmask(value, a - range, b + range);
-    float retracted = stepmask(value, a + range, b - range);
+    float high = stepmask(value, a - range, b + range);
+    float low = stepmask(value, a + range, b - range);
 
-    return smoothstep(extended, retracted, transition);
+    return smoothstep(high, low, transition);
 }
 
 void stepgrad(inout float grad, float value, float threshold) {

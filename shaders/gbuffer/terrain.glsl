@@ -18,6 +18,9 @@ varying vec4 color;
 
 attribute vec4 at_tangent;
 attribute vec3 at_midBlock;
+attribute vec3 mc_Entity;
+
+uniform vec3 upPosition;
 
 void main() {
     gl_Position = ftransform();
@@ -25,21 +28,39 @@ void main() {
     texUV   = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
     lightUV = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;
     
-    vec3 bn = cross(at_tangent.xyz, gl_Normal.xyz) * at_tangent.w;
-    vec3 tn = at_tangent.xyz;
+    vec3 bn = cross(at_tangent.xyz, gl_Normal) * at_tangent.w;
 
-    binormal = normalize(gl_NormalMatrix * bn);
-	tangent  = normalize(gl_NormalMatrix * tn);
-    binormalWS = normalize(bn);
-    tangentWS = normalize(tn);
+	tangent  = normalize(gl_NormalMatrix * at_tangent.xyz);
+    tangentWS = normalize(at_tangent.xyz);
 
     // vec4 posVS = gbufferProjectionInverse * gl_Position;
     // posRWS = (gbufferModelViewInverse * posVS).xyz;
     blockPosition = 1 - ((at_midBlock + 64.0) / 128.0);
 
     normalWS = gl_Normal;
-    normal = gl_NormalMatrix * gl_Normal;
+    normal = normalize(gl_NormalMatrix * gl_Normal);
     color = gl_Color;
+
+    int BlockID = int(max(mc_Entity.x - BaseID, 0));
+    if (BlockID == ID_Foliage)
+    {
+        float ao = smoothstep(-0.3, 0.3, blockPosition.y);
+        color.rgb *= ao;
+
+        vec3 up = normalize(upPosition);
+
+        vec3 targetVS = mix(up, normal, .2);
+        // Better Foliage Normals
+        normal = normalize(targetVS);
+
+        binormal = normalize(cross(at_tangent.xyz, normal) * at_tangent.w);
+        binormalWS = normalize(bn);
+    }
+    else
+    {
+        binormal = normalize(gl_NormalMatrix * bn);
+        binormalWS = normalize(bn);
+    }
 }
 
 #endif
@@ -134,15 +155,15 @@ void main() {
 
         */
 
-        vec4 mask = axisAliasMask(texUV);
+        // vec4 mask = axisAliasMask(texUV);
 
-        vec3 offsetWS = tangentWS * mask.z + binormalWS * mask.w;
+        // vec3 offsetWS = tangentWS * mask.z + binormalWS * mask.w;
 
         
-        vec2 offsetVS = (gbufferModelView * vec4(offsetWS, 1)).xy;
+        // vec2 offsetVS = (gbufferModelView * vec4(offsetWS, 1)).xy;
 
-        aliasMask.xy = (offsetVS + 1) / 2.0;
-        aliasMask.zw = mask.xy;
+        // aliasMask.xy = (offsetVS + 1) / 2.0;
+        // aliasMask.zw = mask.xy;
 
         // vec3 blend = ((tangentWS + 1) / 2.0);
         // blend = tangentWS;
@@ -159,7 +180,8 @@ void main() {
 
     // Sample from texture atlas and account for biome color + ambien occlusion
     vec4 albedo = texture2D(texture, texUV) * color;
-    // debug(albedo.rgb);
+    // albedo.a = 1;
+    // debug(albedo.a);
     // albedo.rgb *= albedo.a;
     // if(albedo.a < .8) {
     //     discard;
@@ -179,8 +201,8 @@ void main() {
     // albedo.rgb = vec3(spec.rgb);
     // TODO: Distant Horizons Blending: Apply dithering on furthest chunks
 
-    albedo.rgb = mix(albedo.rgb, _debug_value.rgb, _debug_value.a);
-    albedo.a = max(albedo.a, _debug_value.a);
+    // albedo.rgb = mix(albedo.rgb, _debug_value.rgb, _debug_value.a);
+    // albedo.a = max(albedo.a, _debug_value.a);
 
     /* DRAWBUFFERS:01234 */
     // Write the values to the color textures

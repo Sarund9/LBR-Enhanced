@@ -70,6 +70,8 @@ void main() {
         return;
     }
 
+    // debug(sceneColor.a);
+
     vec4 sceneNormal = texture2D(colortex1, TexCoords);
     vec4 sceneDetail = texture2D(colortex3, TexCoords);
 
@@ -99,13 +101,21 @@ void main() {
         surface.viewDirection = -posVS;
     }
 
+    // debug(surface.normal);
+
     vec4 sceneLight = texture2D(colortex2, TexCoords);
 
     Shadow shadow = incomingShadow(posRWS);
     
     Light mainLight = surfaceLight(surface, sceneLight.xy, shadow);
     
-    
+    {
+        float s = dot(surface.normal, normalize(shadowLightPosition));
+        float f = smoothstep(.995, 1, s);
+        // surface.color *= vec3(1, .1, .3) * f;
+        // debug(f);
+    }
+
     vec3 diffuse;
     diffuse = directBRDF(surface, mainLight);
 

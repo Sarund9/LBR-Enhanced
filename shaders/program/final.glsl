@@ -88,23 +88,23 @@ void main() {
 
     vec3 color = texture2D(colortex7, TexCoords).rgb;
 
-    vec4 edges = texture2D(colortex4, TexCoords);
-    float sceneDepth = texture2D(depthtex0, TexCoords).r;
+    // vec4 edges = texture2D(colortex4, TexCoords);
+    // float sceneDepth = texture2D(depthtex0, TexCoords).r;
 
-    vec3 view = viewSpacePixel(TexCoords, sceneDepth);
+    // vec3 view = viewSpacePixel(TexCoords, sceneDepth);
 
     // vec2 offsetVS = (gbufferModelView * vec4(edges.xyz, 1)).xy;
     // debug(offsetVS);
-    float depthCS = pow(sceneDepth, 2) / far;
+    // float depthCS = pow(sceneDepth, 2) / far;
 
-    float supersamplemask = 1 - smoothstep(4, 10, length(view));
+    // float supersamplemask = 1 - smoothstep(4, 10, length(view));
 
     // debug(max(vec3(edges.xy * 2 - 1, 0), color));
-    vec2 texeloffset = (edges.xy * 2 - 1) * 0.5;
+    // vec2 texeloffset = (edges.xy * 2 - 1) * 0.5;
 
-    vec2 uv = TexCoords + texeloffset / screenSize;
+    // vec2 uv = TexCoords + texeloffset / screenSize;
 
-    vec3 aliased = supersample(colortex7, uv, edges.zw).rgb;
+    // vec3 aliased = supersample(colortex7, uv, edges.zw).rgb;
     // vec3 aliased = textureGrad(colortex7, uv, dFdx(TexCoords), dFdy(TexCoords)).rgb;
 
     // debug(aliased);
@@ -132,9 +132,9 @@ void main() {
 
     vec3 K = vec3(luma(color));
     color = mix(K, color, 1.1);
-    color += K * .05;
+    // color += K * .05;
 
-    color = mix(color, _debug_value.rgb, _debug_value.a);
+    // color = mix(color, _debug_value.rgb, _debug_value.a);
     
     gl_FragColor = vec4(togamma(color), 1.0);
 }

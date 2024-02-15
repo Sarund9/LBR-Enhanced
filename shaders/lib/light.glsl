@@ -125,6 +125,10 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         float attenuation = oclussion * pow(direct, .25);
         // attenuation = mix(attenuation, attenuation, 1);
 
+        // float bad = float(abs(dotl) < .01);
+        // debug(attenuation);
+        // debug(attenuation);
+
         // 1 when shadow color is transmitted
         float solidMask = (shadow.clipAttenuation - shadow.solidAttenuation);
         // 1 when tra
@@ -149,13 +153,12 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         sunlight.rgb = light * attenuation;
         sunlight.a = attenuation;
     }
-    // debug(sunlight.rgb);
 
     // Apply night-time
     vec4 skylight2; vec4 sunlight2; {
-        // TODO: Moon phases
+        // TODO: Moon phases (.04 to .01)
         float skymul = .2;
-        float moonmul = .05;
+        float moonmul = .05; // TODO: Brighten shadows
         skylight2 = mix(skylight, skylight * skymul, night);
         sunlight2 = mix(sunlight, sunlight * moonmul, night);
     }

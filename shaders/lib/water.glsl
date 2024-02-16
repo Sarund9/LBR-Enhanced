@@ -118,3 +118,10 @@ void computeWaterSurface(
     // surface.viewDirection =
 }
 
+// #define __WATER__
+
+// struct Water {
+//     float sceneDepth;
+//     float surfaceDepth;
+
+// };

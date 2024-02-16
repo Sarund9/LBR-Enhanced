@@ -72,24 +72,12 @@ void main() {
         return;
     }
 
-    // debug(sceneColor.a);
-
     vec4 sceneNormal = texture2D(colortex1, TexCoords);
     vec4 sceneDetail = texture2D(colortex3, TexCoords);
 
     vec3 posVS = viewSpacePixel(TexCoords, depth);
     vec4 posRWS = relativeWorldSpacePixel(TexCoords, depth);
     
-
-    {
-        vec4 edges = texture2D(colortex4, TexCoords);
-
-        vec2 uv = TexCoords + edges.xy / vec2(viewWidth, viewHeight);
-
-        vec3 supersample = texture2D(colortex0, uv).rgb;
-        
-    }
-
     Surface surface; {
         surface.color = tolinear(sceneColor.rgb);
         surface.alpha = sceneColor.a;

@@ -54,10 +54,11 @@ vec3 blocklightColor(float T) {
 
 struct Light {
     vec3 color;
-    vec3 direction;
+    vec3 direction;     // Surface -> Light Source :: View Space
     float directional;
 };
 
+// Compute the light that hits a surface
 Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
 {
     /* Day/Night in Ticks
@@ -187,3 +188,12 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
     
     return light;
 }
+
+
+// #ifdef __WATER__
+
+// Light waterLight(Water water, vec2 sceneLight, Shadow shadow) {
+
+// }
+
+// #endif

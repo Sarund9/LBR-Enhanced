@@ -15,10 +15,6 @@ void vertex_conormals(
     normal = normalize(normalMatrix * vertexNormal);
     binormal = normalize(normalMatrix * cross(vertexTangent.xyz, vertexNormal) * vertexTangent.w);
 	tangent = normalize(normalMatrix * vertexTangent.xyz);
-    
-    // normal *= normalMatrix;
-    // tangent *= normalMatrix;
-    // binormal *= normalMatrix;
 }
 
 mat3 rotor(vec3 normal, vec3 tangent, vec3 binormal) {

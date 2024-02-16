@@ -36,6 +36,8 @@ float specularStrenght(Surface surface, Light light) {
 
 	float specular =  r2 / (d2 * max(0.1, lh2) * normalization);
 
+    // debug(roughness);
+
     return specular;
 }
 
@@ -59,10 +61,14 @@ vec3 directBRDF(Surface surface, Light light) {
         specular = mix(minReflect, incomingLight, surface.metallic);
     }
 
+    float SS = specularStrenght(surface, light);
+
     // DirectBRDF
     vec3 direct = diffuse;
+    direct += specular * SS * light.directional;
 
-    direct += specular * specularStrenght(surface, light) * light.directional;
+    // debug(SS);
+    // debug(light.directional);
 
     return direct;
 }

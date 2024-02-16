@@ -10,14 +10,14 @@ uniform vec3 upPosition;
 
 #include "/lib/normal.glsl"
 
+attribute vec4 at_tangent;
+attribute vec3 at_midBlock;
+attribute vec3 mc_Entity;
+
 varying vec2 vLightUV;
 varying vec2 vTexUV;
 varying vec3 vNormal, vTangent, vBinormal;
 varying vec4 vColor;
-
-attribute vec4 at_tangent;
-attribute vec3 at_midBlock;
-attribute vec3 mc_Entity;
 
 void main() {
     gl_Position = ftransform();

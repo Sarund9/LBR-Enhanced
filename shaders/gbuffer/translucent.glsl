@@ -227,7 +227,7 @@ void main() {
         float diffusion = lstep(deepDiffusion, distanceDiffusion * .8, 7);
         float opacity = mix(col.a, 1, deepDiffusion);
 
-        surface.alpha = clamp01(opacity * .9);
+        surface.alpha = clamp01(opacity);
         surface.smoothness = mix(.5, .9, simplex.w);
         surface.metallic = 0;
     }

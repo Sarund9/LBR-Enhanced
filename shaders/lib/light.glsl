@@ -26,10 +26,7 @@ Required:
 const float LightK = 3;
 const vec3 AmbientLight = vec3(.001);
 
-const vec3 SkyColor = vec3(0.8902, 1.0, 0.9843);
-const vec3 SkyColorNight = vec3(0.1333, 0.1137, 0.1373);
-
-const vec3 SunColor = vec3(1.0, 0.9922, 0.9216);
+const vec3 SunColor = vec3(1.0, 0.9608, 0.8353);
 const vec3 SunColor_Low = vec3(1.0, 0.8275, 0.6431);
 
 const vec3 BaseBlocklightColor = vec3(1.0, 0.9098, 0.7373);
@@ -90,16 +87,19 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
             dusk = min(start, end);
         }
 
-        vec3 color = mix(skyColor, SkyColorNight, night);
+        vec3 daycolor = lighten(skyColor, .2);
 
-        skylight.rgb = color * light;
+        // debug(daycolor);
+        vec3 color = mix(daycolor, vec3(0.1725, 0.1255, 0.1961), night);
+
+        skylight.rgb = color;
     }
     
     /* blocklight:
     */
     vec4 blocklight; {
         blocklight.a = pow(sceneLight.x, 3.2);
-        blocklight.rgb = blocklightColor(0) * blocklight.a * 1.2;
+        blocklight.rgb = blocklightColor(0);
     }
 
     /* sunlight:
@@ -140,7 +140,7 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         
         // Color of Shadows
         // vec3 transmittedColor = mix(surface.color, shadow.color, surface.alpha > .95);
-        vec3 transmittedColor = resaturate(shadow.color, 1.5); // Aesthetic Saturation
+        vec3 transmittedColor = resaturate(shadow.color, 0.8); // Aesthetic Saturation
 
         vec3 solidLight = mix(SunColor, transmittedColor, solidColorMask);
 
@@ -152,7 +152,7 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
 
         vec3 shadedColor = mix(solidLight, translucentColor, translucentShadows);
 
-        sunlight.rgb = shadedColor * attenuation;
+        sunlight.rgb = shadedColor;
         sunlight.a = attenuation;
     }
 
@@ -169,7 +169,10 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         float mask = square(skylight.a) * .7;
         mask = clamp01(mask);
         
-        environment = mix(skylight2, sunlight2, mask);
+        environment.a = mix(skylight2.a, sunlight2.a, mask);
+
+        environment.rgb = oklab_mix(skylight2.rgb, sunlight2.rgb, environment.a);
+        // debug(skylight2.rgb);
     }
     
     vec4 blockblend; {
@@ -182,7 +185,9 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
     
     Light light;
 
-    light.color = (environment.rgb + blockblend.rgb) * 1.5;
+    // debug(environment.rgb * environment.a);
+
+    light.color = (environment.rgb * environment.a + blockblend.rgb * blockblend.a) * 1.5;
     light.direction = normalize(shadowLightPosition);
     light.directional = pow(sunlight.a, 1.0 / 2.0);
     

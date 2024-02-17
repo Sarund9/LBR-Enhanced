@@ -100,6 +100,30 @@ vec3 darken(vec3 color, float sub) {
     return color + C * color;
 }
 
+vec3 lighten(vec3 color, float add) {
+    /* Desmos:
+    x+b\left(1-x\right)
+    F is a factor that gradually reduces the effect of add
+    */
+
+    vec3 F = vec3(1) - color;
+    F = smoothstep(1, 0, F);
+
+    return color + vec3(add) * F;
+}
+
+vec3 lighten(vec3 color, vec3 add) {
+    /* Desmos:
+    x+b\left(1-x\right)
+    F is a factor that gradually reduces the effect of add
+    */
+
+    vec3 F = vec3(1) - color;
+    F = smoothstep(1, 0, F);
+
+    return color + add * F;
+}
+
 float asqrt(float value) {
     float X = intBitsToFloat((floatBitsToInt(value) & 0xff000000) / 2 + (1 << 29));
 

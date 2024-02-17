@@ -91,8 +91,6 @@ void main() {
         surface.viewDirection = -posVS;
     }
 
-    // debug(surface.normal);
-
     vec4 sceneLight = texture2D(colortex2, TexCoords);
 
     Shadow shadow = incomingShadow(posRWS);

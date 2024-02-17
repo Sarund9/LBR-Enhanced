@@ -67,9 +67,6 @@ vec3 directBRDF(Surface surface, Light light) {
     vec3 direct = diffuse;
     direct += specular * SS * light.directional;
 
-    // debug(SS);
-    // debug(light.directional);
-
     return direct;
 }
 

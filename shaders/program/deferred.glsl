@@ -85,7 +85,9 @@ void main() {
 
     vec3 posVS = viewSpacePixel(TexCoords, depth);
     vec4 posRWS = relativeWorldSpacePixel(TexCoords, depth);
-    
+    vec4 posVXS = voxelPerfect(posRWS + vec4(cameraPosition, 0), 16) - vec4(cameraPosition, 0);
+    vec3 posVVS = (gbufferModelView * posVXS).xyz;
+
     Surface surface; {
         surface.color = tolinear(sceneColor.rgb);
         surface.alpha = sceneColor.a;
@@ -96,10 +98,8 @@ void main() {
         // TODO: Subsurface/Porosity/
         // TODO: Emmision
         
-        surface.viewDirection = -posVS;
+        surface.viewDirection = -posVVS;
     }
-
-    // debug(surface.normal);
 
     vec3 diffuse;
     

@@ -108,11 +108,9 @@ varying float watermask;
 varying vec3 vWaterSample;
 
 void main() {
-    // Get the scene depth and position
     vec2 viewUV = gl_FragCoord.xy / vec2(viewWidth, viewHeight);
     float sceneDepth = texture2D(depthtex1, viewUV).r;
 
-    // vec3 posVS = (gbufferModelView * vec4(posRWS, 1)).xyz;
     vec3 posVS = viewSpacePixel(viewUV, gl_FragCoord.z);
 
     vec4 albedo = texture2D(texture, vTexUV);
@@ -217,14 +215,8 @@ void main() {
         surface.metallic = 0;
     }
     
-    
-    
-    // debug(light.color);
-
     vec4 fragColor;
     vec3 surfBRDF = directBRDF(surface, light);
-
-    // debug(surface.normal);
 
     fragColor.rgb = surfBRDF;
     fragColor.a = surface.alpha;

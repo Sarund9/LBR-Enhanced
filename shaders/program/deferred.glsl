@@ -30,18 +30,19 @@ uniform sampler2D noisetex; // Utility noise texture
 uniform float viewWidth;
 uniform float viewHeight;
 
+// SHADOW
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 gbufferModelView;
 uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
+uniform vec3 cameraPosition;
+uniform vec3 shadowLightPosition;
 
 uniform float aspectRatio;
-uniform vec3 cameraPosition;
 
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth; // Used for eye adaptation
-uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
 #include "/lib/color.glsl"

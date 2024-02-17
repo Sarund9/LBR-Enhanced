@@ -39,10 +39,11 @@ uniform mat4 gbufferModelViewInverse;
 // Shadow
 uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
+uniform vec3 cameraPosition;
+uniform vec3 shadowLightPosition;
 // Light
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
-uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
 #include "/lib/color.glsl"

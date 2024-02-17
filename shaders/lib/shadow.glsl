@@ -14,6 +14,8 @@ Requires:
 Uniforms:
 uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
+uniform vec3 cameraPosition;
+uniform vec3 shadowLightPosition;
   
 */
 
@@ -47,8 +49,6 @@ struct Shadow {
     float brightness;        // How bright is the sun
     float solidAttenuation;  // Transparents are solid
     float clipAttenuation;   // Transparents are cut out
-    // TODO
-    // float water;          // 
 };
 
 vec3 shadowColor(Shadow shadow) {
@@ -59,8 +59,20 @@ float visibility(in sampler2D map, in vec3 coords) {
     return step(coords.z - 0.001f, texture2D(map, coords.xy).r);
 }
 
-Shadow incomingShadow(vec4 posWS) {
-    vec4 posSS = shadowProjection * shadowModelView * posWS;
+Shadow incomingShadow(vec4 posRWS) {
+    vec4 shadowLightPositionRWS = gbufferModelViewInverse
+        * vec4(shadowLightPosition, 1);
+
+    // Shadowlight relative world position
+    vec4 posSRWS = (posRWS + vec4(cameraPosition, 0)) - shadowLightPositionRWS;
+    posSRWS = voxelPerfect(posSRWS, 16);
+
+    // Back to camera relative (Voxel Relative World)
+    vec4 posVRWS = (posSRWS + shadowLightPositionRWS) - vec4(cameraPosition, 0);
+
+    vec4 posSVS = shadowModelView * posVRWS;
+
+    vec4 posSS = shadowProjection * posSVS;
     
     posSS.xy = distortPosition(posSS.xy);
     vec3 coords = posSS.xyz * 0.5f + 0.5f;
@@ -78,5 +90,3 @@ Shadow incomingShadow(vec4 posWS) {
 
     return shadow;
 }
-
-

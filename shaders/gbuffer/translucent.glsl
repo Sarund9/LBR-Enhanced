@@ -27,9 +27,7 @@ varying float watermask;
 varying vec3 vWaterSample;
 
 void main() {
-    // vec4 value = gl_Position;
     gl_Position = ftransform();
-    // Assign values to varying variables
     vTexUV   = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
     vLightUV = (gl_TextureMatrix[1] * gl_MultiTexCoord1).xy;
     

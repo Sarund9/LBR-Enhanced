@@ -64,10 +64,18 @@ uniform sampler2D depthtex0; // full scene depth
 
 void main() {
     vec4 sceneColor = texture2D(colortex0, TexCoords);
-
+    
     float depth = texture2D(depthtex0, TexCoords).r;
     // Skip the Skybox, write straigt to Scene Color
     if (depth == 1.0) {
+        gl_FragData[0] = vec4(tolinear(sceneColor.rgb), luma(sceneColor.rgb));
+        return;
+    }
+    
+    vec4 sceneLight = texture2D(colortex2, TexCoords);
+    // Unlit objects
+    if (sceneLight.a < 1.0)
+    {
         gl_FragData[0] = vec4(tolinear(sceneColor.rgb), luma(sceneColor.rgb));
         return;
     }
@@ -91,20 +99,10 @@ void main() {
         surface.viewDirection = -posVS;
     }
 
-    vec4 sceneLight = texture2D(colortex2, TexCoords);
-
-    Shadow shadow = incomingShadow(posRWS);
-    
-    Light mainLight = surfaceLight(surface, sceneLight.xy, shadow);
-    
-    {
-        float s = dot(surface.normal, normalize(shadowLightPosition));
-        float f = smoothstep(.995, 1, s);
-        // surface.color *= vec3(1, .1, .3) * f;
-        // debug(f);
-    }
-
     vec3 diffuse;
+    
+    Shadow shadow = incomingShadow(posRWS);
+    Light mainLight = surfaceLight(surface, sceneLight.xy, shadow);
     diffuse = directBRDF(surface, mainLight);
 
     diffuse = mix(diffuse, _debug_value.rgb, _debug_value.a);

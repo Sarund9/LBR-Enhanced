@@ -47,7 +47,7 @@ void main() {
     vec3 K = vec3(luma(color));
     color = mix(K, color, 1.1);
     
-    gl_FragColor = vec4(togamma(color), 1.0);
+    gl_FragData[0] = vec4(togamma(color), 1.0);
 }
 
 #endif

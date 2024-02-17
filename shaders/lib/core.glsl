@@ -118,11 +118,11 @@ vec3 clamp01(vec3 v) {
 }
 
 vec3 tolinear(vec3 color) {
-    return pow(color, vec3(2.2f));
+    return pow(color, vec3(2.2));
 }
 
 vec3 togamma(vec3 color) {
-    return pow(color, vec3(1.0f / 2.2f));
+    return pow(color, vec3(1.0 / 2.2));
 }
 
 vec3 linearstep(vec3 value, float a, float b) {

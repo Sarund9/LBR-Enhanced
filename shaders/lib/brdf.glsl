@@ -73,6 +73,12 @@ vec3 directBRDF(Surface surface, Light light) {
     return direct;
 }
 
+vec3 simplifiedBRDF(Surface surface, Light light) {
+    vec3 incomingLight = surface.color * light.color;
+
+    return incomingLight;
+}
+
 // TODO: Translucent BRDF
 /*
 Surface color:

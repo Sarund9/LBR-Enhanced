@@ -44,9 +44,6 @@ void main() {
 
     vec3 color = texture2D(colortex7, TexCoords).rgb;
 
-    vec3 K = vec3(luma(color));
-    color = mix(K, color, 1.1);
-    
     gl_FragData[0] = vec4(togamma(color), 1.0);
 }
 

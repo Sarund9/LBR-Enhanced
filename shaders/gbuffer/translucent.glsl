@@ -46,19 +46,6 @@ void main() {
         vec3 posWS = cameraPosition + posRWS;
         vWaterSample.xz = posWS.xz * 0.8;
         vWaterSample.y = frameTimeCounter * 2;
-        
-        // float factor = simplex3d(vWaterSample);
-
-        {
-            // const float StdVoxel = 1.0 / 16.0;
-            // float height = mix(-StdVoxel, StdVoxel, factor);
-            // // Compute and add an offset in clip space
-            // vec4 offset = vec4(0, height, 0, 1);
-            // offset *= gbufferModelView;
-            // offset *= gbufferProjection;
-            // offset.z = 0;
-            // gl_Position += offset;
-        }
     }
 
     vertex_conormals(
@@ -143,7 +130,7 @@ void main() {
     if (watermask < .5)
     {
         vec4 col = albedo * color;
-        surface.color = col.rgb;
+        surface.color = tolinear(col.rgb);
         surface.alpha = col.a;
 
         surface.normal = normalize(

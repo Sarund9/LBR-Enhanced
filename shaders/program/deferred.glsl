@@ -99,6 +99,8 @@ void main() {
         surface.viewDirection = -posVS;
     }
 
+    // debug(surface.normal);
+
     vec3 diffuse;
     
     Shadow shadow = incomingShadow(posRWS);

@@ -30,11 +30,14 @@ vec3 resaturate(vec3 rgb, float adjustment) {
     return mix(intensity, rgb, adjustment);
 }
 
-float saturation(vec3 color) {
-    // TODO: 
-    float a = avg(color);
-    vec3 dist = abs(color - vec3(a));
-    return avg(dist);
+float saturation(vec3 rgb) {
+    float L = luma(rgb);
+    if (L == 1) { return 0; }
+
+    float maxrgb = max(rgb.x, max(rgb.y, rgb.z));
+    float minrgb = min(rgb.x, min(rgb.y, rgb.z));
+
+    return (maxrgb - minrgb) / (1.0 - abs(2.0 * L - 1.0));
 }
 
 vec3 normalizeColor(vec3 rgb) {
@@ -88,6 +91,18 @@ vec3 hueShift(vec3 color, float hue) {
     );
 }
 
+float darken(float color, float sub) {
+    /* Desmos:
+    D\left(v\right)=\left(1-v\right)^{2}-1
+    F\left(v,\ c\right)=D\left(v\right)c
+    R=r+F\left(x,\ r\right)
+    G=g+F\left(x,\ g\right)
+    B=b+F\left(x,\ b\right)
+    */
+    float C = square(1 - sub) - 1;
+    return color + C * color;
+}
+
 vec3 darken(vec3 color, float sub) {
     /* Desmos:
     D\left(v\right)=\left(1-v\right)^{2}-1
@@ -98,6 +113,18 @@ vec3 darken(vec3 color, float sub) {
     */
     float C = square(1 - sub) - 1;
     return color + C * color;
+}
+
+float lighten(float color, float add) {
+    /* Desmos:
+    x+b\left(1-x\right)
+    F is a factor that gradually reduces the effect of add
+    */
+
+    float F = 1 - color;
+    F = smoothstep(1, 0, F);
+
+    return color + add * F;
 }
 
 vec3 lighten(vec3 color, float add) {

@@ -26,7 +26,7 @@ float specularStrenght(Surface surface, Light light) {
         roughness = square(perceptualRoughness);
     }
     
-    vec3 h = snormalize(light.direction + surface.viewDirection);
+    vec3 h = snormalize(light.direction + normalize(surface.viewDirection));
 	float nh2 = square(clamp01(dot(surface.normal, h)));
 
 	float lh2 = square(clamp01(dot(light.direction, h)));
@@ -67,6 +67,10 @@ vec3 directBRDF(Surface surface, Light light) {
     vec3 direct = diffuse;
     direct += specular * SS * light.directional;
 
+    // debug(mix(direct, light.direction, .5));
+    // #ifdef DEBUG_LIB
+    // debug(mix(direct, light.direction, .5));
+    // #endif
     return direct;
 }
 

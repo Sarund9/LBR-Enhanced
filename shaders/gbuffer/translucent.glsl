@@ -76,6 +76,7 @@ uniform vec3 cameraPosition;
 uniform vec3 shadowLightPosition;
 // Water
 uniform vec3 upPosition;
+uniform float frameTimeCounter;
 // Light
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
@@ -97,8 +98,9 @@ uniform sampler2D normals;
 uniform sampler2D specular;
 
 uniform sampler2D colortex7; // Scene Color
-uniform sampler2D depthtex0; // Scene Depth to this object
 uniform sampler2D depthtex1; // Scene Depth behind this object
+
+uniform int isEyeInWater;
 
 varying vec2 vLightUV;
 varying vec2 vTexUV;
@@ -114,11 +116,11 @@ void main() {
 
     vec3 posVS = viewSpacePixel(viewUV, gl_FragCoord.z);
 
-    vec4 albedo = texture2D(texture, vTexUV);
     vec4 specularData = texture2D(specular, vTexUV);
 
-    Surface surface;
     Shadow shadow = incomingShadow(vec4(posRWS, 1));
+
+    Surface surface;
     Light light;
     {
         surface.smoothness = specularData.r;
@@ -126,8 +128,10 @@ void main() {
         surface.viewDirection = -posVS;
     }
 
+    vec4 fragColor;
     if (watermask < .5)
     {
+        vec4 albedo = texture2D(texture, vTexUV);
         vec4 col = albedo * color;
         surface.color = tolinear(col.rgb);
         surface.alpha = col.a;
@@ -137,91 +141,76 @@ void main() {
         );
         
         light = surfaceLight(surface, vLightUV, shadow);
+
+        fragColor.rgb = directBRDF(surface, light);
+        fragColor.a = surface.alpha;
     }
     else
     {
-        
-        // Water Normals
-        vec4 simplex; {
-            vec3 p = vWaterSample;
-            p.xz = (floor(p.xz * 16.0) / 16.0) + 0.5;
-            p.y = floor(p.y * 12.0) / 12.0;
-            simplex.w = waternoise_fract(p);
-            const vec2 e = vec2(1 / 16.0, 0);
-            /* Tangent points toward positive X
-               Binormal points toward positive Y */
-            simplex.xyz = vec3(0, 0, 1);
+        // Water Surface normals and Height
+        vec4 simplex = waternoise(posRWS + cameraPosition);
 
-            const float WaterNormalMult = 2;
 
-            simplex.x += (simplex.w - waternoise_fract(p - e.xyy)) * WaterNormalMult;
-            simplex.y += (simplex.w - waternoise_fract(p - e.yyx)) * WaterNormalMult;
-
-            simplex.xyz = normalize(simplex.xyz);
-            
-        }
-        vec3 blendedNormal = normalize(
+        surface.normal = normalize(
             simplex.xyz * rotor(vNormal, vTangent, vBinormal)
         );
-        surface.normal = blendedNormal;
 
-        vec4 col = color;
-        // WATER: Bedrock Waters contrast Reduction
-        const vec3 UniformWater = vec3(0.051, 0.1255, 0.2824);
-        col.rgb = mix(col.rgb, UniformWater, mix(.5, .7, simplex.w));
-        // surface.color = albedo.rgb * col;
-        // albedo.rgb *= mix(.8, .9, simplex.w);
-        col.a *= albedo.a;
-        col.rgb *= mix(pow(avg(albedo.rgb), 3) * 1.3, .1, 1 - simplex.w);
+        // TODO: Standarized Water Color
+        // Water Surface Color and Alpha
+        {
+            vec4 albedo = texture2D(texture, vTexUV);
 
-        // debug(mix(pow(avg(albedo.rgb), 3), mix(.3, 1, simplex.w), .7));
-        // debug(albedo.rgb);
+            vec4 col = vec4(watercolor(color.rgb, simplex.w, pow(albedo.b, 3) * 1.3), color.a);
+            col.a *= albedo.a;
+            // col.rgb *= mix(pow(avg(albedo.rgb), 3) * 1.3, .1, 1 - simplex.w);
+            // float factor = mix(pow(avg(albedo.rgb), 3) * 1.3, .1, 1 - simplex.w);
+            // debug(1 - simplex.w);
 
-        surface.color = col.rgb;
-
-        surface.smoothness = 1;
-        surface.metallic = 0;
-
-        surface.alpha = col.a;
+            surface.color = col.rgb;
+            surface.alpha = col.a;
+        }
+        
+        surface.smoothness = mix(.5, .9, simplex.w);
+        surface.metallic = 0.01;
+        
         light = surfaceLight(surface, vLightUV, shadow);
 
-        /* Bedrock Waters mod changes water colors across biomes
-        But the effect can be jarring with a more detailed water shader
-        This brings the color back 50% to a vanilla-ish color */
-
-        float dotview = dot(surface.normal, surface.viewDirection);
-
-        // TODO: Move to water.glsl
-        // Water Opacity
-        const float DeepDiffusionDistance = 24.0;
-        const float FarDiffusionStart = 12.0;
-        const float FarDiffusionEnd = 46.0;
+        vec4 scenePosRWS = relativeWorldSpacePixel(viewUV, sceneDepth);
 
         // -> composeWater()
-        vec4 scenePosRWS = relativeWorldSpacePixel(viewUV, sceneDepth);
-        float trueDepth = length(scenePosRWS.xyz);
-        float trueDistance = length(posRWS);
         
-        float deepDiffusion = (trueDepth - trueDistance) / DeepDiffusionDistance;
-        float distanceDiffusion = smoothstep(FarDiffusionStart, FarDiffusionEnd, trueDistance);
-        
-        // TODO: Base the distance diffusion on horizontal distance
-        // debug(surface.viewDirection);
+        // 
+        if (isEyeInWater == 1)
+        {
 
-        float diffusion = lstep(deepDiffusion, distanceDiffusion * .8, 7);
-        float opacity = mix(col.a, 1, deepDiffusion);
+        }
+        else
+        {
+            float sceneDistance = length(scenePosRWS.xyz);
+            float surfaceDistance = length(posRWS);
+            
+            float fog = waterfog(sceneDistance, surfaceDistance);
+            float opacity = mix(surface.alpha, 1, fog);
+            
+            surface.alpha = clamp01(opacity);
+        }
 
-        surface.alpha = clamp01(opacity);
-        surface.smoothness = mix(.5, .9, simplex.w);
-        surface.metallic = 0;
+        // Water Refractions
+        // TODO: Redesign water noise, using layered voronoi to emulate waves.
+        // Simplex3D can still be used to add 
+        // vec3 refraction; {
+
+        //     refraction = texture2D(colortex7, waterfract(simplex, viewUV)).rgb;
+
+        //     // debug(refraction);
+        // }
+
+        vec3 diffuse = directBRDF(surface, light);
+        fragColor.rgb = diffuse;
+        fragColor.a = surface.alpha;
+
     }
     
-    vec4 fragColor;
-    vec3 surfBRDF = directBRDF(surface, light);
-
-    fragColor.rgb = surfBRDF;
-    fragColor.a = surface.alpha;
-
     fragColor.rgb = mix(fragColor.rgb, _debug_value.rgb, _debug_value.a);
     fragColor.a = max(fragColor.a, _debug_value.a);
     

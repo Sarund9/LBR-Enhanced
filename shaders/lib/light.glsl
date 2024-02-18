@@ -13,9 +13,9 @@ uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
 
 Required:
-  lib/core
-    lib/space
-    lib/distort
+  lib/space
+  lib/distort
+  lib/color
   lib/shadow
   lib/surface
 
@@ -56,6 +56,20 @@ struct Light {
 };
 
 // Compute the light that hits a surface
+/*
+    TODO: Rewrite an entire separate function for Translucents
+    This is related to subsurface calculations as well
+    It may require a separate BRDF entirely
+
+    TODO: Rewrite the lighting model
+        Join together:
+            shadow.glsl
+            surface.glsl
+            light.glsl
+            brdf.glsl
+        Into a single file `lighting.glsl`
+
+*/
 Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
 {
     /* Day/Night in Ticks
@@ -67,6 +81,8 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
 
     float day = smoothmask(time, 0, 12250, 750);
     float night = 1 - day;
+
+    float translucent = smoothstep(1, .95, surface.alpha);
 
     /* skylight
     11500: Starts to diminish
@@ -108,7 +124,7 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         Can this time be changed ??
 
     */
-    vec4 sunlight; {
+    vec4 sunlight; float sunlightDirect; {
         // Directional Dot Product
         float dotl = dot(surface.normal, normalize(shadowLightPosition) + vec3(1e-4));
         
@@ -124,14 +140,12 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         // Is this surface covered by shadows
         float attenuation = mix(oclussion * surface.alpha, oclussion * pow(direct, .25), surface.alpha);
         
-        float translucentShadows = smoothstep(1, .95, surface.alpha);
-
         // What color to use. 1 when shadow transmits it's color, 0 when the sun color is used
         float solidColorMask = mix(
             (shadow.clipAttenuation - shadow.solidAttenuation),
             smoothstep(-.1, .1, -dotl),
             // surface.alpha < 1
-            translucentShadows
+            translucent
             );
         /* This uglyness used to (Incorrectly) blend 2 different masks to blend colors between translucents and opaques.
         This is incorrect because the mask is only capable of blending between the Sun color and the shadow color, where self-shadowed translucents should use their own surface color as the correct shadow color.
@@ -150,10 +164,11 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
             SunColor * smoothstep(0, .6, surface.alpha),
         direct * 0.6 + 0.1);
 
-        vec3 shadedColor = mix(solidLight, translucentColor, translucentShadows);
+        vec3 shadedColor = mix(solidLight, translucentColor, translucent);
 
         sunlight.rgb = shadedColor;
         sunlight.a = attenuation;
+        sunlightDirect = direct;
     }
 
     // Apply night-time
@@ -171,8 +186,12 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         
         environment.a = mix(skylight2.a, sunlight2.a, mask);
 
-        environment.rgb = oklab_mix(skylight2.rgb, sunlight2.rgb, environment.a);
-        // debug(skylight2.rgb);
+        float transmittedShadow = shadow.clipAttenuation - shadow.solidAttenuation;
+        float colormask = lighten(environment.a, transmittedShadow * .2);
+        // TODO: new mask method
+
+        environment.rgb = oklab_mix(skylight2.rgb * skylight2.a, sunlight2.rgb * sunlight2.a, environment.a);
+        // debug(environment.rgb);
     }
     
     vec4 blockblend; {
@@ -191,14 +210,17 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
     light.direction = normalize(shadowLightPosition);
     light.directional = pow(sunlight.a, 1.0 / 2.0);
     
+    // Prevent specular highlights in the underside of translucents
+    light.directional = mix(light.directional, sunlightDirect, translucent);
+    
+    // debug(environment.rgb * environment.a);
+
     return light;
 }
 
-
-// #ifdef __WATER__
-
-// Light waterLight(Water water, vec2 sceneLight, Shadow shadow) {
+/*
+Compute the light that enters a translucent surface through itself
+*/
+// Light subsurfaceLight(Surface surface, vec2 sceneLight, Shadow shadow) {
 
 // }
-
-// #endif

@@ -14,8 +14,6 @@ varying vec2 TexCoords;
 // 158 -10 +202 +11 == 
 #ifdef __VERTEX__
 
-uniform float day;
-
 void main() {
 	gl_Position = ftransform();
 	TexCoords = gl_MultiTexCoord0.st;

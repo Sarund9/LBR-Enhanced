@@ -132,24 +132,24 @@ vec4 simplex3d_height(in vec3 p) {
     return vec4(0, 0, 0, P);
 }
 
-float waternoise(in vec3 p) {
+float simplex3d_smooth(in vec3 p) {
     float value = simplex3d(p);
     float normalized = smoothstep(-1, 1, value);
 
     return normalized;
 }
 
-float waternoise_fract(in vec3 p) {
+float fractalnoise(in vec3 p) {
     float value; vec3 sample;
 
     sample = p;
-    value += waternoise(sample) * 6;
+    value += simplex3d_smooth(sample) * 6;
 
     sample.xz *= 2; sample.xz += 20;
-    value += waternoise(sample) * 4;
+    value += simplex3d_smooth(sample) * 4;
 
     sample.xz *= 2; sample.xz += 20;
-    value += waternoise(sample) * 2;
+    value += simplex3d_smooth(sample) * 2;
 
     return value / 12.0;
 }

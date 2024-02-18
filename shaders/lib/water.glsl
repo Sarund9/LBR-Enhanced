@@ -1,127 +1,87 @@
 /*
 
-Water Surface
+Water Effects and Shaders
 
 Requires:
-lib/space
-lib/surface
+// lib/space
+// lib/surface
+lib/noise
 
 Uniforms:
-uniform vec3 upPosition;
+uniform float frameTimeCounter;
 
 */
 
 // TODO: Compute a water object instead of a Surface
 // TODO: Send pure light values instead of the scene color
 
-float waterFog(
-    float trueDepth,
-    float trueDistance
-) {
-    // Find the true distance to the scene pixel
-    // float trueDepth = length(scenePositionRWS.xyz);
-    // Find the distance to the water surface
-    // float trueDistance = length(surfacePositionRWS);
-    
-    // Distance by which a ray of light must travel to get from the underwater surface to the Eye
-    float diffusionDistance = trueDepth - trueDistance;
-    
-    // Adjust this value to create a mask
-    const float DarkViewDistance = 20.0;
-    const float LightViewDistance = 64.0;
-    const float MinOpacity = 0.5;
-    
-    // TODO: Make incoming light from BRDF reduced by this
-    // float viewDistance; {
-    //     float hdrl = luma(sceneColor.rgb);
-    //     float lightl = sceneColor.a;
-    //     float lightmask = smoothstep(.5, 3.0, lightl);
-    //     float factor = lightmask * pow(hdrl, 1.0 / 2.0);
-    //     viewDistance = mix(DarkViewDistance, LightViewDistance, factor);
-    //     // debug(factor);
-    // }
-    
-    float distanceFactor = smoothstep(0, DarkViewDistance, diffusionDistance);
-    
-    float opacity = mix(MinOpacity, 1, pow(distanceFactor, 1.2));
-    
-    return opacity;
-}
 
-void computeWaterSurface(
-    inout Surface surface,
-    vec4 sceneColor,        // Raw HDR Color
-    float sceneDepth,       // Raw scene depth behind water surface
-    vec4 scenePositionRWS,  // Raw scene position in Relative World Space
-    vec3 surfacePositionRWS // Raw surface position in Relative World Space
-) {
-    
-    // Find the true distance to the scene pixel
-    float trueDepth = length(scenePositionRWS.xyz);
-    // Find the distance to the water surface
-    float trueDistance = length(surfacePositionRWS);
-    
-    // Distance by which a ray of light must travel to get from the underwater surface to the Eye
-    float diffusionDistance = trueDepth - trueDistance;
-    
-    // Adjust this value to create a mask
-    const float DarkViewDistance = 20.0;
-    const float LightViewDistance = 64.0;
-    const float MinOpacity = 0.5;
-    
-    // TODO: Take into account the ammount of light in this fragment
-    // This can be assumed to be the HDR channel value itself
-    // This will become more noticeable with Emmision
-    float viewDistance; {
-        float hdrl = luma(sceneColor.rgb);
-        float lightl = sceneColor.a;
-        float lightmask = smoothstep(.5, 3.0, lightl);
-        float factor = lightmask * pow(hdrl, 1.0 / 2.0);
-        viewDistance = mix(DarkViewDistance, LightViewDistance, factor);
-        // debug(factor);
-    }
-    
-    float distanceFactor = smoothstep(0, viewDistance, diffusionDistance);
-    
-    float opacity = mix(MinOpacity, 1, pow(distanceFactor, 1.2));
-    
-    // TODO: Water surface plane from underneath
-    // TODO: Defferred water (and water entity ID)
-    /*
-    Defferred water is preferable here:
-    - This shader is for translucents, defferring water prevents overhead
-    - Can better blend by writing some values to a buffer:
-    - Water color (vanilla) is written to the default buffer
-    DISTANCEBUFFER (Float):
-    R: Distance to the nearest plane of Water
-    
-    TODO After:
-    * Water Normals
-    Vanilla water texture not used
-    Rather, a normal map is used that results in a vanilla-like result
-    This normal should be procedural and animated
-    NOTE: Water does not have a normal texture by default
-    * Waves
-    * Water Edges
-    
-    
-    Future: Volumetric Lights (under the water)
-    */
-    
-    // TODO: Separate water vs translucent shaders
-    
-    surface.color=vec3(.1608,.0667,.7647);
-    surface.alpha=opacity*.5;
-    surface.normal=upPosition;
-    surface.metallic=0;
-    surface.smoothness=1;
-    // surface.viewDirection =
-}
+vec3 watercolor(vec3 current, float simplex, float texture) {
+    const vec3 BaseWaterColor = vec3(0.007, 0.012, 0.08);
+    // WATER: Bedrock Waters contrast Reduction
+    /* Bedrock Waters mod changes water colors across biomes
+    But the effect can be jarring with a more detailed water shader
+    This brings the color back 50% to a vanilla-ish color */
+    // debug(BaseWaterColor);
+    vec3 hue = mix(current, BaseWaterColor, mix(.5, .7, simplex));
 
-// #define __WATER__
+    hue *= mix(texture, .1, 1 - simplex);
+
+    return hue;
+}
 
 // struct Water {
-//     float sceneDepth;
-//     float surfaceDepth;
-
+//     float value;
+//     vec3 surfaceNormal;
 // };
+
+vec4 waternoise(vec3 surfacePositionWS) {
+    vec4 simplex;
+
+    vec3 p;
+    p.xz = surfacePositionWS.xz * 0.8;
+    p.y = frameTimeCounter * 2;
+
+    p.xz = (floor(p.xz * 16.0) / 16.0) + 0.5;
+    p.y = floor(p.y * 12.0) / 12.0;
+    simplex.w = fractalnoise(p);
+    const vec2 e = vec2(1 / 16.0, 0);
+    /* Tangent points toward positive X
+        Binormal points toward positive Y */
+    simplex.xyz = vec3(0, 0, 1);
+
+    const float WaterNormalMult = 2;
+
+    simplex.x += (simplex.w - fractalnoise(p - e.xyy)) * WaterNormalMult;
+    simplex.y += (simplex.w - fractalnoise(p - e.yyx)) * WaterNormalMult;
+
+    simplex.xyz = normalize(simplex.xyz);
+    
+    return simplex;
+}
+
+vec2 waterfract(vec4 noise, vec2 viewUV) {
+
+    float lines = smoothstep(.8, 1, noise.a);
+
+    return viewUV;
+}
+
+const float WaterDiffusionDistance = 20.0;
+
+/* Computes the ammount of light color lost as it travels water
+*/
+float waterfog(float sceneDistance, float surfaceDistance) {
+    // Water Opacity
+    const float FarDiffusionStart = 12.0;
+    const float FarDiffusionEnd = 46.0;
+
+
+    float diffusionDistance = (sceneDistance - surfaceDistance);
+    float diffusionFactor = smoothstep(0, WaterDiffusionDistance, diffusionDistance);
+    
+    // TODO: Base the distance diffusion on horizontal distance
+    // TODO: Diffusion based on entry angle to water
+
+    return mix(0.1, 1, diffusionFactor);
+}

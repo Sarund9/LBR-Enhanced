@@ -11,9 +11,6 @@ attribute vec4 at_tangent;
 varying vec2 vLightUV;
 varying vec2 vTexUV;
 varying vec4 vColor;
-#ifdef __TRANSLUCENT__
-varying vec3 vPosRWS;
-#endif
 
 void main() {
     gl_Position = ftransform();
@@ -64,9 +61,6 @@ uniform sampler2D specular;
 varying vec2 vLightUV;
 varying vec2 vTexUV;
 varying vec4 vColor;
-#ifdef __TRANSLUCENT__
-varying vec3 vPosRWS;
-#endif
 
 void main() {
     vec4 albedo = texture2D(texture, vTexUV) * vColor;

@@ -44,6 +44,8 @@ void main() {
 
     vec3 color = texture2D(colortex7, TexCoords).rgb;
 
+    // TODO: Ditheting Effect
+
     gl_FragData[0] = vec4(togamma(color), 1.0);
 }
 

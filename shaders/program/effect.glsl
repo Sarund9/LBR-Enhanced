@@ -52,9 +52,9 @@ uniform ivec2 eyeBrightness;
 uniform float viewWidth;
 uniform float viewHeight;
 uniform vec3 cameraPosition;
+uniform float blindness;
 
-float linearize_depth(float depth)
-{
+float linearize_depth(float depth) {
     float z_n = 2.0 * depth - 1.0;
     return 2.0 * near * far / (far + near - z_n * (far - near));
 }
@@ -77,12 +77,12 @@ void main() {
 
     vec4 gPosRWS = relativeWorldSpacePixel(vTexUV, sceneDepth);
 
-    // debug(linearize_depth(sceneDepth) / 150.0);
-
     vec3 frag = sceneColor.rgb;
 
     switch (isEyeInWater) {
-    case 1: // In Water
+    
+    // UNDERWATER
+    case 1:
         vec3 fogpos = fogfarpos(gPosRWS);
 
         float noise = fractalnoise(fogpos) * .05 + .1;
@@ -93,6 +93,17 @@ void main() {
         frag = oklab_mix(frag, wcolor, fog);
         break;
     }
+
+    // BLINDNESS
+    if (blindness > 0)
+    {
+        const float BlindnessFogDistance = 5.0;
+        float dist = length(gPosRWS);
+        float factor = smoothstep(BlindnessFogDistance, 0, dist);
+        factor = pow(factor, 2);
+        frag = mix(fogColor, frag, factor);
+    }
+    
 
     frag = mix(frag, _debug_value.rgb, _debug_value.a);
 

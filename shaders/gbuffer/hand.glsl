@@ -61,6 +61,7 @@ uniform vec3 upPosition;
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
 uniform vec3 skyColor;
+uniform float nightVision;
 
 #include "/lib/color.glsl"
 #include "/lib/normal.glsl"

@@ -81,6 +81,7 @@ uniform float frameTimeCounter;
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
 uniform vec3 skyColor;
+uniform float nightVision;
 
 #include "/lib/color.glsl"
 #include "/lib/normal.glsl"

@@ -180,18 +180,22 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
         sunlight2 = mix(sunlight, sunlight * moonmul, night);
     }
 
-    vec4 environment; {
+    vec3 environment; {
         float mask = square(skylight.a) * .7;
         mask = clamp01(mask);
         
-        environment.a = mix(skylight2.a, sunlight2.a, mask);
+        float alpha = mix(skylight2.a, sunlight2.a, mask);
 
-        float transmittedShadow = shadow.clipAttenuation - shadow.solidAttenuation;
-        float colormask = lighten(environment.a, transmittedShadow * .2);
         // TODO: new mask method
-
-        environment.rgb = oklab_mix(skylight2.rgb * skylight2.a, sunlight2.rgb * sunlight2.a, environment.a);
-        // debug(environment.rgb);
+        
+        environment = oklab_mix(skylight2.rgb * skylight2.a, sunlight2.rgb * sunlight2.a, alpha);
+        // Apply Night Vision
+        const vec3 NightVisionColor = vec3(0.5, 0.5, 0.64);
+        float nvmask = nightVision;
+        nvmask -= mix(skylight2.a, sunlight2.a, alpha) * 2;
+        nvmask = clamp01(nvmask);
+        environment = oklab_mix(
+            environment, NightVisionColor, nvmask);
     }
     
     vec4 blockblend; {
@@ -204,16 +208,14 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
     
     Light light;
 
-    // debug(environment.rgb * environment.a);
-
-    light.color = (environment.rgb * environment.a + blockblend.rgb * blockblend.a) * 1.5;
+    light.color = (environment + blockblend.rgb * blockblend.a) * 1.5;
     light.direction = normalize(shadowLightPosition);
     light.directional = pow(sunlight.a, 1.0 / 2.0);
     
     // Prevent specular highlights in the underside of translucents
     light.directional = mix(light.directional, sunlightDirect, translucent);
     
-    // debug(environment.rgb * environment.a);
+    // debug(environment.rgb);
 
     return light;
 }

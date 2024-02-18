@@ -42,6 +42,7 @@ uniform float aspectRatio;
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth; // Used for eye adaptation
 uniform vec3 skyColor;
+uniform float nightVision;
 
 #include "/lib/color.glsl"
 #include "/lib/space.glsl"

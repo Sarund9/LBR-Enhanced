@@ -17,6 +17,10 @@ vec3 viewSpacePixel(vec2 tx, float depth) {
     return view;
 }
 
+vec3 viewSpaceToRelativeWorld(vec3 viewPosition) {
+    return (gbufferModelViewInverse * vec4(viewPosition, 1.0)).xyz;
+}
+
 vec4 relativeWorldSpacePixel(vec2 texCoord, float depth) {
     vec3 clipSpace = vec3(texCoord, depth) * 2.0f - 1.0f;
     

@@ -88,11 +88,9 @@ uniform float nightVision;
 #include "/lib/noise.glsl"
 #include "/lib/space.glsl"
 #include "/lib/distort.glsl"
-#include "/lib/shadow.glsl"
-#include "/lib/surface.glsl"
+#include "/lib/lighting.glsl"
 #include "/lib/water.glsl"
-#include "/lib/light.glsl"
-#include "/lib/brdf.glsl"
+
 
 uniform sampler2D texture;
 uniform sampler2D normals;

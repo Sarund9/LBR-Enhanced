@@ -47,11 +47,7 @@ uniform float nightVision;
 #include "/lib/color.glsl"
 #include "/lib/space.glsl"
 #include "/lib/distort.glsl"
-#include "/lib/shadow.glsl"
-#include "/lib/surface.glsl"
-#include "/lib/light.glsl"
-
-#include "/lib/brdf.glsl"
+#include "/lib/lighting.glsl"
 
 // UNIFORMS
 uniform sampler2D colortex0; // albedo

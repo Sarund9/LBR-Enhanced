@@ -90,7 +90,7 @@ void main() {
         
         vec3 wcolor = watercolor(fogColor, noise, .4);
 
-        frag = oklab_mix(frag, wcolor, fog);
+        // frag = oklab_mix(frag, wcolor, fog);
         break;
     }
 
@@ -101,7 +101,7 @@ void main() {
         float dist = length(gPosRWS);
         float factor = smoothstep(BlindnessFogDistance, 0, dist);
         factor = pow(factor, 2);
-        frag = mix(fogColor, frag, factor);
+        // frag = mix(fogColor, frag, factor);
     }
     
 

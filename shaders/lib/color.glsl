@@ -150,10 +150,3 @@ vec3 lighten(vec3 color, vec3 add) {
 
     return color + add * F;
 }
-
-float asqrt(float value) {
-    float X = intBitsToFloat((floatBitsToInt(value) & 0xff000000) / 2 + (1 << 29));
-
-    return (X + value / X) / 2.0;
-}
-

@@ -1,5 +1,3 @@
-#ifndef __INCLUDED_CORE__
-#define __INCLUDED_CORE__
 
 /*
 Channels:
@@ -17,6 +15,8 @@ Water: 5
 
 */
 
+#include "/settings.glsl"
+
 const int BaseID = 10000;
 
 const int ID_Water = 3;
@@ -26,6 +26,7 @@ const int ID_Foliage = 10;
 
 const float PI = 3.14159265359;
 
+#ifdef DEBUG
 vec4 _debug_value;
 
 void debug(vec3 value) {
@@ -78,6 +79,13 @@ void debugldr(float value) {
         1 + under - over
     );
 }
+#else
+#define debug(...)
+#define debughdr(...)
+#define debugp(...)
+#define debugldr(...)
+
+#endif
 
 // vec3 pow3() {
 
@@ -275,5 +283,3 @@ vec4 voxelPerfect(vec4 value, float voxelSize) {
     pix += vec4(.5);
     return pix / voxelSize;
 }
-
-#endif

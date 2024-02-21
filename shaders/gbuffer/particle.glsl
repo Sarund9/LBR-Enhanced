@@ -49,10 +49,7 @@ uniform float nightVision;
 #ifdef __TRANSLUCENT__
 #include "/lib/space.glsl"
 #include "/lib/distort.glsl"
-#include "/lib/shadow.glsl"
-#include "/lib/surface.glsl"
-#include "/lib/light.glsl"
-#include "/lib/brdf.glsl"
+#include "/lib/lighting.glsl"
 #endif
 
 uniform sampler2D texture;

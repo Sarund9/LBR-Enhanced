@@ -86,8 +86,14 @@ Shadow incomingShadow(vec4 posRWS) {
     vec4 shadowLightPositionRWS = gbufferModelViewInverse
         * vec4(shadowLightPosition, 1);
 
+    // vec4 posSRWS = (posRWS + vec4(cameraPosition, 0)) - shadowLightPositionRWS;
+    vec4 posAbsWS = posRWS + vec4(cameraPosition, 0);
+    posAbsWS += 0.0001;
+
+    // debug(voxelPerfect(posAbsWS, 4).rgb);
+    // debug(shadowLightPositionRWS.rgb);
     // Shadowlight relative world position
-    vec4 posSRWS = (posRWS + vec4(cameraPosition, 0)) - shadowLightPositionRWS;
+    vec4 posSRWS = voxelPerfect(posAbsWS, 16) - voxelPerfect(shadowLightPositionRWS, 16);
     // posSRWS = voxelPerfect(posSRWS, 16); // Pixel Perfect
     
 

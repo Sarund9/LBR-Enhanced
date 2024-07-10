@@ -82,6 +82,7 @@ void main() {
     vec3 posVS = viewSpacePixel(TexCoords, depth);
     vec4 posRWS = relativeWorldSpacePixel(TexCoords, depth);
     vec4 posVXS = voxelPerfect(posRWS + vec4(cameraPosition, 0), 16) - vec4(cameraPosition, 0);
+    posVXS += 0.01;
     vec3 posVVS = (gbufferModelView * posVXS).xyz;
 
     SolidSurface solid; {
@@ -96,12 +97,9 @@ void main() {
     }
     vec3 diffuse = solidBRDF(solid);
     
-    // float dshadow = texture2D(shadowtex0, TexCoords).r;
-    // dshadow *= dshadow;
-    // debug(dshadow);
-
-    // diffuse.r += 0.4;
-    // debug(sceneColor.rgb);
+    // debug(posRWS.rgb + cameraPosition);
+    // debug(voxelPerfect(posRWS + vec4(cameraPosition, 0), 16).rgb);
+    // debug(posVXS.rgb);
     debugblender(diffuse);
 
  /* DRAWBUFFERS:7 */

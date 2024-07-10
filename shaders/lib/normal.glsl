@@ -100,3 +100,7 @@ vec3 decodeNormal(vec2 packed_nrm) {
         return normalize(v);
     #endif
 }
+
+vec3 blendNormal(vec3 a, vec3 b) {
+    return normalize(a + b);
+}

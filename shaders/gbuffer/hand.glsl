@@ -69,7 +69,6 @@ uniform float nightVision;
 #include "/lib/space.glsl"
 #include "/lib/distort.glsl"
 #include "/lib/lighting.glsl"
-#include "/lib/water.glsl"
 
 uniform sampler2D texture;
 uniform sampler2D normals;
@@ -97,26 +96,33 @@ void main() {
     // vec3 posVS = (gbufferModelView * vec4(posRWS, 1)).xyz;
     vec3 posVS = viewSpacePixel(viewUV, gl_FragCoord.z);
 
-    Surface surface; {
-        surface.color = albedo.rgb;
-        surface.alpha = albedo.a;
-        surface.normal = normal;
-        surface.smoothness = specularData.r;
-        surface.metallic = specularData.g;
-        surface.viewDirection = -posVS;
+    // Surface surface; {
+    //     surface.color = albedo.rgb;
+    //     surface.alpha = albedo.a;
+    //     surface.normal = normal;
+    //     surface.smoothness = specularData.r;
+    //     surface.metallic = specularData.g;
+    //     surface.viewDirection = -posVS;
+    // }
+    
+    // Shadow shadow = incomingShadow(vec4(posRWS, 1));
+    // Light light = surfaceLight(surface, lightUV, shadow);
+    
+    TranslucentSurface surf; {
+        surf.albedo = albedo.rgb;
+        surf.alpha = albedo.a;
+        surf.normal = normal;
+        surf.smoothness = specularData.r;
+        surf.metallic = specularData.g;
+        surf.viewPosition = posVS;
+        surf.worldPosition = posRWS;
+        surf.light = lightUV;
     }
-    
-    Shadow shadow = incomingShadow(vec4(posRWS, 1));
-    Light light = surfaceLight(surface, lightUV, shadow);
-    
-    vec4 fragColor;
-    vec3 surfBRDF = directBRDF(surface, light);
 
-    fragColor.rgb = surfBRDF;
-    fragColor.a = surface.alpha;
+    vec3 diffuse = translucentBRDF(surf);
 
     /* DRAWBUFFERS:7 */
-    gl_FragData[0] = fragColor;
+    gl_FragData[0] = vec4(diffuse, surf.alpha);
     
 #else
     /* DRAWBUFFERS:0123 */

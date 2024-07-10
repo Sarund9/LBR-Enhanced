@@ -84,24 +84,23 @@ void main() {
     
     vec4 posRWS = (gbufferModelViewInverse * vec4(posVS, 1));
 
-    Surface surface; {
-        surface.color = tolinear(albedo.rgb);
-        surface.alpha = albedo.a;
-        surface.normal = normalize(normal);
-
-        surface.smoothness = specularData.r;
-        surface.metallic = specularData.g;
-        
-        surface.viewDirection = -posVS;
+    TranslucentSurface surf; {
+        surf.albedo = tolinear(albedo.rgb);
+        surf.alpha = albedo.a;
+        surf.normal = normalize(normal);
+        surf.smoothness = specularData.r;
+        surf.metallic = specularData.g;
+        surf.viewPosition = posVS;
+        surf.worldPosition = posRWS.xyz;
+        surf.light = vLightUV;
     }
+    vec3 diffuse = translucentBRDF(surf);
+    // debug(diffuse);
 
-    Shadow shadow = incomingShadow(posRWS);
-    Light light = surfaceLight(surface, vLightUV, shadow);
-
-    vec3 diffuse = simplifiedBRDF(surface, light);
+    debugblender(diffuse, surf.alpha);
 
     /* DRAWBUFFERS:7 */
-    gl_FragData[0] = vec4(diffuse, surface.alpha);
+    gl_FragData[0] = vec4(diffuse, surf.alpha);
 #else
     /* DRAWBUFFERS:0123 */
     gl_FragData[0] = albedo;

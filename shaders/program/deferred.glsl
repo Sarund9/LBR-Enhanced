@@ -84,29 +84,22 @@ void main() {
     vec4 posVXS = voxelPerfect(posRWS + vec4(cameraPosition, 0), 16) - vec4(cameraPosition, 0);
     vec3 posVVS = (gbufferModelView * posVXS).xyz;
 
-    Surface surface; {
-        surface.color = tolinear(sceneColor.rgb);
-        surface.alpha = sceneColor.a;
-        surface.normal = normalize(sceneNormal.rgb * 2.0f - 1.0f); // TODO: Normal Compression
-
-        surface.smoothness = sceneDetail.r;
-        surface.metallic = sceneDetail.g;
-        // TODO: Subsurface/Porosity/
-        // TODO: Emmision
+    SolidSurface solid; {
+        solid.albedo = tolinear(sceneColor.rgb);
+        solid.normal = normalize(sceneNormal.rgb * 2.0 - 1.0);
+        solid.smoothness = sceneDetail.r;
+        solid.metallic = sceneDetail.g;
         
-        surface.viewDirection = -posVVS;
+        solid.light = sceneLight.xy;
+        solid.viewPosition = posVVS;
+        solid.worldPosition = posRWS.xyz;
     }
-
-    vec3 diffuse;
+    vec3 diffuse = solidBRDF(solid);
     
-    Shadow shadow = incomingShadow(posRWS);
-    Light mainLight = surfaceLight(surface, sceneLight.xy, shadow);
-    diffuse = directBRDF(surface, mainLight);
-
-    diffuse = mix(diffuse, _debug_value.rgb, _debug_value.a);
+    debugblender(diffuse);
 
  /* DRAWBUFFERS:7 */
-    gl_FragData[0] = vec4(diffuse, luma(mainLight.color));
+    gl_FragData[0] = vec4(diffuse, 1);
 }
 
 #endif

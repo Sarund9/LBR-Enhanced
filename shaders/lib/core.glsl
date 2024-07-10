@@ -87,6 +87,19 @@ void debugldr(float value) {
 
 #endif
 
+void debugblender(inout vec3 rgb) {
+#ifdef DEBUG
+    rgb = mix(rgb, _debug_value.rgb, _debug_value.a);
+#endif
+}
+
+void debugblender(inout vec3 rgb, inout float alpha) {
+#ifdef DEBUG
+    rgb = mix(rgb, _debug_value.rgb, _debug_value.a);
+    alpha = max(alpha, _debug_value.a);
+#endif
+}
+
 // vec3 pow3() {
 
 // }

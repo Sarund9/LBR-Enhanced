@@ -64,24 +64,25 @@ void main() {
 uniform float viewWidth;
 uniform float viewHeight;
 
-uniform mat4 gbufferModelView;
-
 // Space
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
-// Shadow
+// Lighting
 uniform mat4 shadowModelView;
 uniform mat4 shadowProjection;
 uniform vec3 cameraPosition;
 uniform vec3 shadowLightPosition;
-// Water
-uniform vec3 upPosition;
-uniform float frameTimeCounter;
-// Light
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
 uniform vec3 skyColor;
 uniform float nightVision;
+// Water
+uniform vec3 upPosition;
+uniform float frameTimeCounter;
+uniform ivec2 atlasSize;
+uniform mat4 gbufferModelView;
+uniform mat4 gbufferProjection;
+uniform mat4 normalMatrix;
 
 #include "/lib/color.glsl"
 #include "/lib/normal.glsl"
@@ -130,88 +131,69 @@ void main() {
     vec4 fragColor;
     if (watermask < .5)
     {
-        vec4 albedo = texture2D(texture, vTexUV);
-        vec4 col = albedo * color;
-        surface.color = tolinear(col.rgb);
-        surface.alpha = col.a;
-
-        surface.normal = normalize(
+        TranslucentSurface surf;
+        vec4 col = texture2D(texture, vTexUV) * color;
+        surf.albedo = tolinear(col.rgb);
+        surf.alpha = col.a;
+        surf.smoothness = specularData.r;
+        surf.metallic = specularData.g;
+        
+        surf.normal = normalize(
             sampleNormalMap(normals, vTexUV) * rotor(vNormal, vTangent, vBinormal)
         );
-        
-        light = surfaceLight(surface, vLightUV, shadow);
 
-        fragColor.rgb = directBRDF(surface, light);
-        fragColor.a = surface.alpha;
+        surf.light = vLightUV;
+        surf.viewPosition = posVS;
+        surf.worldPosition = posRWS.xyz;
+        
+        fragColor.rgb = translucentBRDF(surf);
+        fragColor.a = surf.alpha;
     }
     else
     {
         // Water Surface normals and Height
         vec4 simplex = waternoise(posRWS + cameraPosition);
 
+        // debug(simplex.w);
+        // vec4 height = waterheight(texture, vTexUV);
 
-        surface.normal = normalize(
-            simplex.xyz * rotor(vNormal, vTangent, vBinormal)
-        );
+        // vec4 aspect;
+        // aspect.w = simplex.w * height.w;
+        // aspect.xyz = normalize(simplex.xyz + height.xyz);
 
-        // TODO: Standarized Water Color
-        // Water Surface Color and Alpha
+        // aspect.xyz = height.xyz;
+
+        // debug(height.xyz);
+
+        Water water;
         {
             vec4 albedo = texture2D(texture, vTexUV);
-
-            vec4 col = vec4(watercolor(color.rgb, simplex.w, pow(albedo.b, 3) * 1.3), color.a);
+            // float wtex = pow(albedo.b, 3) * 1.5;
+            vec4 col = vec4(watercolor(color.rgb, simplex.w, albedo.b), color.a);
             col.a *= albedo.a;
-            // col.rgb *= mix(pow(avg(albedo.rgb), 3) * 1.3, .1, 1 - simplex.w);
-            // float factor = mix(pow(avg(albedo.rgb), 3) * 1.3, .1, 1 - simplex.w);
-            // debug(1 - simplex.w);
-
-            surface.color = col.rgb;
-            surface.alpha = col.a;
+            water.color = col.rgb;   // Blended Water Color
+            // debug(water.color);
         }
-        
-        surface.smoothness = mix(.5, .9, simplex.w);
-        surface.metallic = 0.01;
-        
-        light = surfaceLight(surface, vLightUV, shadow);
+
+        water.viewPosition = posVS;
+        water.worldPosition = posRWS.xyz;
+        water.screenPosition = vec3(viewUV, gl_FragCoord.z);
 
         vec4 scenePosRWS = relativeWorldSpacePixel(viewUV, sceneDepth);
 
-        // -> composeWater()
-        
-        // 
-        if (isEyeInWater == 1)
-        {
+        water.depthWorldPosition = scenePosRWS.xyz;
 
-        }
-        else
-        {
-            float sceneDistance = length(scenePosRWS.xyz);
-            float surfaceDistance = length(posRWS);
-            
-            float fog = waterfog(sceneDistance, surfaceDistance);
-            float opacity = mix(surface.alpha, 1, fog);
-            
-            surface.alpha = clamp01(opacity);
-        }
+        water.rawNormal = simplex.xyz;
+        water.normal = normalize(
+            simplex.xyz * rotor(vNormal, vTangent, vBinormal)
+        );
+        water.light = vLightUV;
 
-        // Water Refractions
-        // TODO: Redesign water noise, using layered voronoi to emulate waves.
-        // Simplex3D can still be used to add 
-        // vec3 refraction; {
-
-        //     refraction = texture2D(colortex7, waterfract(simplex, viewUV)).rgb;
-
-        //     // debug(refraction);
-        // }
-
-        vec3 diffuse = directBRDF(surface, light);
-        fragColor.rgb = diffuse;
-        fragColor.a = surface.alpha;
-
+        fragColor.rgb = waterBRDF(water, colortex7);
+        fragColor.a = 1.0;
     }
     
-    fragColor.rgb = mix(fragColor.rgb, _debug_value.rgb, _debug_value.a);
-    fragColor.a = max(fragColor.a, _debug_value.a);
+    debugblender(fragColor.rgb, fragColor.a);
     
     /* DRAWBUFFERS:7 */
     gl_FragData[0] = fragColor;

@@ -24,12 +24,28 @@ void main() {
 // Space
 uniform mat4 gbufferProjectionInverse;
 uniform mat4 gbufferModelViewInverse;
+
+uniform mat4 shadowModelView;
+uniform mat4 shadowProjection;
+uniform vec3 cameraPosition;
+uniform vec3 shadowLightPosition;
+
+uniform int worldTime;
+uniform ivec2 eyeBrightnessSmooth;
+uniform vec3 skyColor;
+uniform float nightVision;
+
 // Water
 uniform float frameTimeCounter;
+uniform mat4 gbufferProjection;
+uniform float viewWidth;
+uniform float viewHeight;
 
 #include "/lib/space.glsl"
 #include "/lib/noise.glsl"
 #include "/lib/color.glsl"
+#include "/lib/distort.glsl"
+#include "/lib/lighting.glsl"
 #include "/lib/water.glsl"
 
 uniform sampler2D colortex7;
@@ -49,9 +65,6 @@ uniform float near;
 uniform float far;
 uniform vec3 fogColor;
 uniform ivec2 eyeBrightness;
-uniform float viewWidth;
-uniform float viewHeight;
-uniform vec3 cameraPosition;
 uniform float blindness;
 
 float linearize_depth(float depth) {
@@ -90,7 +103,7 @@ void main() {
         
         vec3 wcolor = watercolor(fogColor, noise, .4);
 
-        // frag = oklab_mix(frag, wcolor, fog);
+        frag = oklab_mix(frag, wcolor, fog);
         break;
     }
 
@@ -101,7 +114,7 @@ void main() {
         float dist = length(gPosRWS);
         float factor = smoothstep(BlindnessFogDistance, 0, dist);
         factor = pow(factor, 2);
-        // frag = mix(fogColor, frag, factor);
+        frag = mix(fogColor, frag, factor);
     }
     
 

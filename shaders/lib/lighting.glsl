@@ -21,8 +21,8 @@ uniform vec3 shadowLightPosition;
 
 uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
-uniform vec3 shadowLightPosition;
 uniform vec3 skyColor;
+uniform float nightVision;
 
 
 Desired API
@@ -184,7 +184,7 @@ vec3 blocklightColor(float T) {
 
 struct Light {
     vec3 color;
-    vec3 direction;     // Surface -> Light Source :: View Space
+    vec3 direction;     // Surface -> Light Source in View Space
     float directional;
 };
 
@@ -353,13 +353,6 @@ Light surfaceLight(Surface surface, vec2 sceneLight, Shadow shadow)
     return light;
 }
 
-/*
-Compute the light that enters a translucent surface through itself
-*/
-// Light subsurfaceLight(Surface surface, vec2 sceneLight, Shadow shadow) {
-
-// }
-
 
 //
 //  BRDF
@@ -429,7 +422,6 @@ vec3 simplifiedBRDF(Surface surface, Light light) {
 
 */
 struct SolidSurface {
-    // Surface
     vec3 albedo;
     vec3 normal;
     float metallic;
@@ -560,6 +552,27 @@ Light solidSurfaceLight(SolidSurface surf) {
     return light;
 }
 
+float specularStrenght(SolidSurface surf, vec3 lightDirection) {   
+    float roughness; {
+        float perceptualRoughness = 1 - surf.smoothness;
+        roughness = square(perceptualRoughness);
+    }
+
+    vec3 h = snormalize(lightDirection - normalize(surf.viewPosition));
+	float nh2 = square(clamp01(dot(surf.normal, h)));
+
+	float lh2 = square(clamp01(dot(lightDirection, h)));
+	float r2 = square(roughness);
+	float d2 = square(nh2 * (r2 - 1.0) + 1.00001);
+	float normalization = roughness * 4.0 + 2.0;
+
+	float specular =  r2 / (d2 * max(0.1, lh2) * normalization);
+
+    // debug(roughness);
+
+    return specular;
+}
+
 vec3 solidBRDF(SolidSurface surf) {
     // Compute the light that hits the solid
     Light light = solidSurfaceLight(surf);
@@ -569,11 +582,11 @@ vec3 solidBRDF(SolidSurface surf) {
         vec3 minReflect = vec3(0.001) * light.color;
 
         // LBR: Total light color is doubled, metals keep 50% of their color
-        diffuse = mix(minReflect, incomingLight, 1 - surface.metallic * .5);
-        specular = mix(minReflect, incomingLight, surface.metallic);
+        diffuse = mix(minReflect, incomingLight, 1 - surf.metallic * .5);
+        specular = mix(minReflect, incomingLight, surf.metallic);
     }
-
-    float SS = specularStrenght(surface, light);
+    
+    float SS = specularStrenght(surf, light.direction);
 
     // DirectBRDF
     vec3 direct = diffuse;
@@ -581,6 +594,181 @@ vec3 solidBRDF(SolidSurface surf) {
 
     return direct;
 }
+
+struct TranslucentSurface {
+    vec3 albedo;
+    float alpha;
+    vec3 normal;
+    float metallic;
+    vec3 viewPosition;  // View-Space Position
+    vec3 worldPosition; // Relative World Position
+    float smoothness;
+    vec2 light;         // Normalized light level values
+};
+
+Light translucentSurfaceLight(TranslucentSurface surf) {
+    Shadow shadow = incomingShadow(vec4(surf.worldPosition, 1));
+    /* Day/Night in Ticks
+       0 to 13k is day
+       13k to 23k is night */
+    float time = float(worldTime);
+
+    const float TK = 1000.0;
+
+    float day = smoothmask(time, 0, 12250, 750);
+    float night = 1 - day;
+
+    // Sky Light
+    vec4 skylight; {
+        float light = pow(surf.light.y, 2.5);
+
+        skylight.a = light;
+
+        // TODO: This affects sunlight
+        float dusk; {
+            float start = smoothstep(12200, 12900, time);
+            float end   = smoothstep(13500, 13000, time);
+            dusk = min(start, end);
+        }
+
+        vec3 daycolor = lighten(skyColor, .2);
+
+        // debug(daycolor);
+        vec3 color = mix(daycolor, vec3(0.1725, 0.1255, 0.1961), night);
+
+        skylight.rgb = color;
+    }
+    
+    // Block Light
+    vec4 blocklight; {
+        blocklight.a = pow(surf.light.x, 3.2);
+        blocklight.rgb = blocklightColor(0);
+    }
+
+    vec4 sunlight; float sunlightDirect; {
+        // Directional Dot Product
+        float dotl = dot(surf.normal, normalize(shadowLightPosition) + vec3(1e-4));
+        
+        // Is light directly hitting this surface
+        float direct = max(dotl, 0); //mix(1, max(dotl, 0), surface.alpha);
+        // Translucent surfaces have the light pass through
+        // direct += max(-dotl, 0) * (1 - surface.alpha);
+        
+        float solidOclussion = shadow.clipAttenuation * shadow.brightness;
+        // Is this surface ocluded by shadows
+        float oclussion = shadow.clipAttenuation;
+
+        // Is this surface covered by shadows
+        float attenuation = oclussion * surf.alpha;
+        
+        // What color to use. 1 when shadow transmits it's color, 0 when the sun color is used
+        float solidColorMask = smoothstep(-.1, .1, -dotl);
+        
+        // Color of Shadows
+        vec3 transmittedColor = resaturate(shadow.color, 0.8); // Aesthetic Saturation
+
+        vec3 solidLight = mix(SunColor, transmittedColor, solidColorMask);
+
+        // Color of self shadowed translucent surfaces
+        vec3 shadedColor = mix(
+            mix(SunColor, surf.albedo, surf.alpha),
+            SunColor * smoothstep(0, .6, surf.alpha),
+        direct * 0.6 + 0.1);
+
+        sunlight.rgb = shadedColor;
+        sunlight.a = attenuation;
+        sunlightDirect = direct;
+    }
+
+    // Apply night-time
+    vec4 skylight2; vec4 sunlight2; {
+        // TODO: Moon phases (.04 to .01)
+        float skymul = .2;
+        float moonmul = .05; // TODO: Brighten shadows
+        skylight2 = mix(skylight, skylight * skymul, night);
+        sunlight2 = mix(sunlight, sunlight * moonmul, night);
+    }
+
+    vec3 environment; {
+        float mask = square(skylight.a) * .7;
+        mask = clamp01(mask);
+        
+        float alpha = mix(skylight2.a, sunlight2.a, mask);
+
+        // TODO: new mask method
+        
+        environment = oklab_mix(skylight2.rgb * skylight2.a, sunlight2.rgb * sunlight2.a, alpha);
+        // Apply Night Vision
+        const vec3 NightVisionColor = vec3(0.5, 0.5, 0.64);
+        float nvmask = nightVision;
+        nvmask -= mix(skylight2.a, sunlight2.a, alpha) * 2;
+        nvmask = clamp01(nvmask);
+        environment = oklab_mix(
+            environment, NightVisionColor, nvmask);
+    }
+    
+    vec4 blockblend; {
+        float blendmask = skylight.a;
+        blockblend = mix(
+            blocklight * 1.6,
+            psmin(blocklight, blocklight * .5 + .75, .5),
+        blendmask);
+    } 
+    
+    Light light;
+
+    light.color = (environment + blockblend.rgb * blockblend.a) * 1.5;
+    light.direction = normalize(shadowLightPosition);
+    light.directional = pow(sunlight.a, 1.0 / 2.0);
+    
+    return light;
+}
+
+float specularStrenght(TranslucentSurface surf, vec3 lightDirection) {   
+    float roughness; {
+        float perceptualRoughness = 1 - surf.smoothness;
+        roughness = square(perceptualRoughness);
+    }
+
+    vec3 h = snormalize(lightDirection - normalize(surf.viewPosition));
+	float nh2 = square(clamp01(dot(surf.normal, h)));
+
+	float lh2 = square(clamp01(dot(lightDirection, h)));
+	float r2 = square(roughness);
+	float d2 = square(nh2 * (r2 - 1.0) + 1.00001);
+	float normalization = roughness * 4.0 + 2.0;
+
+	float specular =  r2 / (d2 * max(0.1, lh2) * normalization);
+
+    // debug(roughness);
+
+    return specular;
+}
+
+vec3 translucentBRDF(TranslucentSurface surf) {
+    Light light = translucentSurfaceLight(surf);
+
+    vec3 incomingLight = surf.albedo * light.color;
+    vec3 diffuse; vec3 specular; {
+        vec3 minReflect = vec3(0.001) * light.color;
+
+        // LBR: Total light color is doubled, metals keep 50% of their color
+        diffuse = mix(minReflect, incomingLight, 1 - surf.metallic * .5);
+        specular = mix(minReflect, incomingLight, surf.metallic);
+    }
+
+    float SS = specularStrenght(surf, light.direction);
+
+    // DirectBRDF
+    vec3 direct = diffuse;
+    direct += specular * SS * light.directional;
+
+    return direct;
+}
+
+// TODO: Normal Compression
+// TODO: Subsurface/Porosity/
+// TODO: Emmision
 
 // TODO: Translucent BRDF
 

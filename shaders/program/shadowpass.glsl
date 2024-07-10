@@ -51,7 +51,9 @@ uniform sampler2D texture;
 
 void main() {
     if (clip > .5) { discard; }
+
     gl_FragData[0] = texture2D(texture, TexCoords) * Color;
+    // gl_FragData[0] = vec4(0, 0, 0, 1);
     // gl_FragData[0] = Color;
 }
 

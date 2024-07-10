@@ -71,47 +71,6 @@ vec4 waternoise(vec3 surfacePositionWS) {
     return simplex;
 }
 
-float waterheightsample(in sampler2D tex, in vec2 uv) {
-    float value = texture2D(tex, uv).r;
-    // value *= value;
-    return 1 - square(value) * .5;
-}
-
-vec4 waterheight(in sampler2D tex, in vec2 uv) {
-    vec4 sample;
-    sample.w = waterheightsample(tex, uv);
-
-    vec2 txsize = 1 / vec2(atlasSize);
-    vec2 numcells = vec2(atlasSize) / 16.0;
-    vec2 cellSize = txsize * 16.0;
-    
-
-    vec2 cell = floor(uv * numcells) / numcells;
-
-    vec3 e = vec3(txsize, 0);
-    vec2 uvx = uv - e.xz;
-    vec2 uvy = uv - e.zy;
-
-    // Loop-arround
-    uvx.x += cellSize.x * float(uvx.x < cell.x);
-    uvy.y += cellSize.y * float(uvy.y < cell.y);
-
-    sample.z = 1;
-
-    float Mult = 1;
-
-    sample.x += (
-        sample.w - waterheightsample(tex, uvx)
-    ) * Mult;
-    sample.y += (
-        sample.w - waterheightsample(tex, uvy)
-    ) * Mult;
-
-    sample.xyz = normalize(sample.xyz);
-
-    return sample;
-}
-
 vec2 waterfract(vec4 noise, vec2 viewUV) {
 
     float lines = smoothstep(.8, 1, noise.a);
@@ -220,8 +179,7 @@ vec3 waterRefraction(
     return color;
 }
 
-
-vec3 waterBRDF(Water water, in sampler2D sceneColor) {
+vec3 waterBRDF(Water water, vec4 sceneSample) {
 
     vec3 viewDir = -normalize(water.viewPosition);
     vec2 viewUV = water.screenPosition.xy;
@@ -275,7 +233,7 @@ vec3 waterBRDF(Water water, in sampler2D sceneColor) {
         // delta = water.rawNormal.xz;
         uv += delta * scale;
 
-        pureRefractionColor = texture2D(sceneColor, viewUV).rgb;
+        pureRefractionColor = sceneSample.rgb;
         // debug(float(fract(uv.x * 90) < .5) * .4);
         // debug(delta);
     }

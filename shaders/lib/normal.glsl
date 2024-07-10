@@ -24,10 +24,9 @@ mat3 rotor(vec3 normal, vec3 tangent, vec3 binormal) {
     return mat;
 }
 
-vec3 sampleNormalMap(in sampler2D normalmap, vec2 uv) {
-    vec4 sample = texture2D(normalmap, uv);
-
-    return (sample.xyz * 2) - 1;
+vec3 denormalizeNormalSample(vec4 normalSample) {
+    
+    return (normalSample.xyz * 2) - 1;
 }
 
 /*

@@ -45,8 +45,8 @@ uniform float viewHeight;
 #include "/lib/noise.glsl"
 #include "/lib/color.glsl"
 #include "/lib/distort.glsl"
-#include "/lib/lighting.glsl"
-#include "/lib/water.glsl"
+// #include "/lib/lighting.glsl"
+// #include "/lib/water.glsl"
 
 uniform sampler2D colortex7;
 uniform sampler2D depthtex0; //
@@ -92,20 +92,20 @@ void main() {
 
     vec3 frag = sceneColor.rgb;
 
-    switch (isEyeInWater) {
+    // switch (isEyeInWater) {
     
-    // UNDERWATER
-    case 1:
-        vec3 fogpos = fogfarpos(gPosRWS);
+    // // UNDERWATER
+    // case 1:
+    //     vec3 fogpos = fogfarpos(gPosRWS);
 
-        float noise = fractalnoise(fogpos) * .05 + .1;
-        float fog = waterfog(length(gPosRWS), 0);
+    //     float noise = fractalnoise(fogpos) * .05 + .1;
+    //     float fog = waterfog(length(gPosRWS), 0);
         
-        vec3 wcolor = watercolor(fogColor, noise, .4);
+    //     vec3 wcolor = watercolor(fogColor, noise, .4);
 
-        frag = oklab_mix(frag, wcolor, fog);
-        break;
-    }
+    //     frag = oklab_mix(frag, wcolor, fog);
+    //     break;
+    // }
 
     // BLINDNESS
     if (blindness > 0)

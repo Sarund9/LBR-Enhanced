@@ -140,16 +140,16 @@ float simplex3d_smooth(in vec3 p) {
 }
 
 float fractalnoise(in vec3 p) {
-    float value; vec3 sample;
+    float value; vec3 result;
 
-    sample = p;
-    value += simplex3d_smooth(sample) * 6;
+    result = p;
+    value += simplex3d_smooth(result) * 6;
 
-    sample.xz *= 2; sample.xz += 20;
-    value += simplex3d_smooth(sample) * 4;
+    result.xz *= 2; result.xz += 20;
+    value += simplex3d_smooth(result) * 4;
 
-    sample.xz *= 2; sample.xz += 20;
-    value += simplex3d_smooth(sample) * 2;
+    result.xz *= 2; result.xz += 20;
+    value += simplex3d_smooth(result) * 2;
 
     return value / 12.0;
 }

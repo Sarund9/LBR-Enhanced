@@ -67,7 +67,7 @@ void main() {
     vec4 albedo = texture2D(texture, vTexUV) * vColor;
     
     vec3 normalBlend = normalize(
-        sampleNormalMap(normals, vTexUV)
+        denormalizeNormalSample(texture2D(normals, vTexUV))
         * rotor(vNormal, vTangent, vBinormal));
 
     vec4 spec = texture2D(specular, vTexUV);

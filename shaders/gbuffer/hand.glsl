@@ -84,7 +84,8 @@ varying vec3 posRWS;
 void main() {
     vec4 albedo = texture2D(texture, vTexUV) * color;
     vec3 normal = normalize(
-        sampleNormalMap(normals, vTexUV) * rotor(vNormal, vTangent, vBinormal)
+        denormalizeNormalSample(texture2D(normals, vTexUV))
+            * rotor(vNormal, vTangent, vBinormal)
     );
     vec4 specularData = texture2D(specular, vTexUV);
 

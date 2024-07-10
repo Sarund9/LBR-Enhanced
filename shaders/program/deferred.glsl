@@ -96,6 +96,12 @@ void main() {
     }
     vec3 diffuse = solidBRDF(solid);
     
+    // float dshadow = texture2D(shadowtex0, TexCoords).r;
+    // dshadow *= dshadow;
+    // debug(dshadow);
+
+    // diffuse.r += 0.4;
+    // debug(sceneColor.rgb);
     debugblender(diffuse);
 
  /* DRAWBUFFERS:7 */

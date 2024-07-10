@@ -78,8 +78,8 @@ vec3 shadowColor(Shadow shadow) {
     return shadow.color * (shadow.clipAttenuation - shadow.solidAttenuation);
 }
 
-float visibility(in sampler2D map, in vec3 coords) {
-    return step(coords.z - 0.001f, texture2D(map, coords.xy).r);
+float visibility(vec4 shadowSample, float coordDepth) {
+    return step(coordDepth - 0.001f, shadowSample.r);
 }
 
 Shadow incomingShadow(vec4 posRWS) {
@@ -107,8 +107,8 @@ Shadow incomingShadow(vec4 posRWS) {
 
     shadow.color            = col.rgb;
     shadow.brightness       = col.a;
-    shadow.solidAttenuation = visibility(shadowtex0, coords);
-    shadow.clipAttenuation  = visibility(shadowtex1, coords);
+    shadow.solidAttenuation = visibility(texture2D(shadowtex0, coords.xy), coords.z);
+    shadow.clipAttenuation  = visibility(texture2D(shadowtex1, coords.xy), coords.z);
 
     // debug(shadow.brightness);
 
@@ -549,6 +549,8 @@ Light solidSurfaceLight(SolidSurface surf) {
     light.direction = normalize(shadowLightPosition);
     light.directional = pow(sunlight.a, 1.0 / 2.0);
     
+    // debug(shadow.solidAttenuation);
+
     return light;
 }
 
@@ -591,6 +593,7 @@ vec3 solidBRDF(SolidSurface surf) {
     // DirectBRDF
     vec3 direct = diffuse;
     direct += specular * SS * light.directional;
+
 
     return direct;
 }

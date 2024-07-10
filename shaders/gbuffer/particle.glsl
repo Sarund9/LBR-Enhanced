@@ -72,7 +72,7 @@ void main() {
     vec3 tangent = cross(up, vec3(1, 0, 0));
     vec3 binormal = cross(tangent, up);
     
-    vec3 normal = normalize(sampleNormalMap(normals, vTexUV) * rotor(
+    vec3 normal = normalize(denormalizeNormalSample(texture2D(normals, vTexUV)) * rotor(
         up, tangent, binormal
     ));
     

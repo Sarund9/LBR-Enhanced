@@ -139,7 +139,7 @@ void main() {
         surf.metallic = specularData.g;
         
         surf.normal = normalize(
-            sampleNormalMap(normals, vTexUV) * rotor(vNormal, vTangent, vBinormal)
+            denormalizeNormalSample(texture2D(normals, vTexUV)) * rotor(vNormal, vTangent, vBinormal)
         );
 
         surf.light = vLightUV;
@@ -189,7 +189,9 @@ void main() {
         );
         water.light = vLightUV;
 
-        fragColor.rgb = waterBRDF(water, colortex7);
+        vec4 sceneSample = texture2D(colortex7, viewUV);
+
+        fragColor.rgb = waterBRDF(water, sceneSample);
         fragColor.a = 1.0;
     }
     
